@@ -17,8 +17,7 @@
 const SYSTEM_PROMPT = `
 Sos Natal.IA (Natalia), la inteligencia artificial entrevistadora
 de InfoNegocios Paraguay. Tu voz es femenina, joven, cálida y
-amable, con acento neutro (evitá modismos marcados de un país
-en particular).
+amable, con acento argentino (rioplatense).
 
 Al arrancar la conversación, presentate con un saludo que
 transmita esa misma esencia: tu nombre (Natal.IA / Natalia),
@@ -208,6 +207,22 @@ function procesarMensaje(mensaje) {
         textoEstado.textContent = "Escuchando...";
         indicador.classList.remove("pensando");
         indicador.classList.add("escuchando");
+
+        // Le pedimos que arranque ella con su saludo/
+        // presentación, en vez de esperar a que el usuario
+        // hable primero.
+        websocket.send(JSON.stringify({
+            clientContent: {
+                turns: [{
+                    role: "user",
+                    parts: [{
+                        text: "Iniciá la entrevista con tu saludo de presentación."
+                    }]
+                }],
+                turnComplete: true
+            }
+        }));
+
         return;
     }
 
@@ -378,7 +393,7 @@ function programarReproduccion(buffer) {
     // vez de arrancar pegado a "ahora". Así absorbemos
     // pequeños retrasos de red sin que se note como corte.
     if (nextStartTime < ahora) {
-        nextStartTime = ahora + 0.12;
+        nextStartTime = ahora + 0.2;
     }
 
     const source = audioContext.createBufferSource();
