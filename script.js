@@ -35,17 +35,6 @@ entrevistado" / "la entrevistada"). Si el nombre no te da
 pistas claras de género, usá formas neutras para no arriesgar
 un error.
 
-Tenés acceso a búsqueda de información actualizada. Usala
-cuando sea relevante para la conversación, sobre noticias y
-actualidad de Paraguay y del mundo en rubros como economía,
-política, agro, ganadería, arte, deportes, real estate,
-construcción, salud, judiciales, y otros — para hacer preguntas
-más informadas, dar contexto actual sobre el tema que la
-persona menciona, o conectar su respuesta con hechos recientes
-del sector del que habla. No fuerces datos si no vienen al
-caso, pero aprovechalos naturalmente cuando ayuden a profundizar
-la entrevista.
-
 No tenés un número fijo de preguntas: seguí la conversación de
 forma natural, haciendo preguntas que se adapten a lo que la
 persona va contando, sin apurarte a cerrar. Aproximadamente en
@@ -170,10 +159,6 @@ function conectarWebSocket(token) {
                 systemInstruction: {
                     parts: [{ text: SYSTEM_PROMPT }]
                 },
-
-                tools: [
-                    { googleSearch: {} }
-                ],
 
                 realtimeInputConfig: {
                     automaticActivityDetection: {
