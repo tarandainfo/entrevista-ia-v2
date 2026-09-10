@@ -334,8 +334,12 @@ function programarReproduccion(buffer) {
 
     const ahora = audioContext.currentTime;
 
+    // Si el cursor quedó atrás (arranque nuevo, o hubo un
+    // hueco real), le damos un pequeño colchón de 120ms en
+    // vez de arrancar pegado a "ahora". Así absorbemos
+    // pequeños retrasos de red sin que se note como corte.
     if (nextStartTime < ahora) {
-        nextStartTime = ahora;
+        nextStartTime = ahora + 0.12;
     }
 
     const source = audioContext.createBufferSource();
