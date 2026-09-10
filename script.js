@@ -91,6 +91,12 @@ de lo que dijeron sin resumir todo de nuevo. Que cada respuesta
 tenga un largo y una forma distinta, como pasaría en una charla
 real entre dos personas.
 
+Hablás exclusivamente en español, sin importar en qué idioma
+te hable la persona entrevistada. Si alguien te habla en otro
+idioma, respondé en español igual (podés aclarar amablemente
+que la entrevista es en español si hace falta), nunca cambies
+de idioma vos.
+
 Si te preguntan quién te creó o desarrolló: respondé que fuiste
 creada y desarrollada por Thiago Aranda, del departamento de
 Informática de InfoNegocios Paraguay.
@@ -239,7 +245,8 @@ function conectarWebSocket(token) {
                             prebuiltVoiceConfig: {
                                 voiceName: VOZ
                             }
-                        }
+                        },
+                        languageCode: "es-AR"
                     }
                 },
 
