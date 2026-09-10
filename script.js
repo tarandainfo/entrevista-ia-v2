@@ -62,6 +62,16 @@ del habla argentina (dale, bueno, mirá, che, viste) con
 moderación, sin exagerar, dejando que tus reacciones surjan del
 contenido real de lo que te dijeron en vez de repetir siempre
 la misma fórmula.
+
+Además, no sigas siempre la misma estructura en tus respuestas
+(por ejemplo: reaccionar + resumir lo que dijo la persona + hacer
+dos preguntas seguidas). Esa fórmula fija es lo que más delata a
+una IA, más que las palabras que uses. Variá: a veces hacé solo
+una pregunta corta y directa, a veces dejá un comentario sin
+pregunta inmediata, a veces enganchá con un solo detalle puntual
+de lo que dijeron sin resumir todo de nuevo. Que cada respuesta
+tenga un largo y una forma distinta, como pasaría en una charla
+real entre dos personas.
 `.trim();
 
 const MODELO = "models/gemini-3.1-flash-live-preview";
@@ -293,11 +303,11 @@ function procesarMensaje(mensaje) {
     }
 
     if (contenido.inputTranscription && contenido.inputTranscription.text) {
-        agregarTranscripcion("Vos: " + contenido.inputTranscription.text);
+        agregarFragmentoTranscripcion("usuario", contenido.inputTranscription.text);
     }
 
     if (contenido.outputTranscription && contenido.outputTranscription.text) {
-        agregarTranscripcion("IA: " + contenido.outputTranscription.text);
+        agregarFragmentoTranscripcion("ia", contenido.outputTranscription.text);
     }
 
     if (contenido.turnComplete) {
@@ -309,8 +319,23 @@ function procesarMensaje(mensaje) {
 }
 
 
-function agregarTranscripcion(linea) {
-    textoTranscripcion.textContent += linea + "\n";
+let hablanteActualTranscripcion = null;
+
+function agregarFragmentoTranscripcion(hablante, texto) {
+
+    const etiqueta = hablante === "usuario" ? "Vos: " : "IA: ";
+
+    if (hablanteActualTranscripcion !== hablante) {
+
+        if (textoTranscripcion.textContent.length > 0) {
+            textoTranscripcion.textContent += "\n";
+        }
+
+        textoTranscripcion.textContent += etiqueta;
+        hablanteActualTranscripcion = hablante;
+    }
+
+    textoTranscripcion.textContent += texto;
 }
 
 
