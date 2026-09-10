@@ -71,6 +71,12 @@ export async function onRequestGet(context) {
                             parts: [{ text: SYSTEM_PROMPT }]
                         },
 
+                        realtimeInputConfig: {
+                            automaticActivityDetection: {
+                                silenceDurationMs: 500
+                            }
+                        },
+
                         inputAudioTranscription: {},
                         outputAudioTranscription: {}
                     }

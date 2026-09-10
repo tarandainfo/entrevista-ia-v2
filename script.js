@@ -152,6 +152,12 @@ function conectarWebSocket(token) {
                     parts: [{ text: SYSTEM_PROMPT }]
                 },
 
+                realtimeInputConfig: {
+                    automaticActivityDetection: {
+                        silenceDurationMs: 500
+                    }
+                },
+
                 inputAudioTranscription: {},
                 outputAudioTranscription: {}
             }
