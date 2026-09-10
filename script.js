@@ -129,6 +129,7 @@ let websocket = null;
 let audioContext = null;
 let microphoneStream = null;
 let procesadorMicrofono = null;
+let analizadorAudio = null;
 
 // Cursor de tiempo para programar los buffers de audio
 // uno pegado al otro, sin depender de "onended" (eso es
@@ -144,9 +145,24 @@ let scheduledSources = [];
 const botonComenzar = document.getElementById("comenzar");
 const textoEstado = document.getElementById("estado");
 const textoTranscripcion = document.getElementById("transcripcion");
-const indicador = document.getElementById("indicador");
 
 botonComenzar.addEventListener("click", iniciarEntrevista);
+
+
+// ----------------------------------------
+// CAMBIO DE PANTALLA
+// ----------------------------------------
+
+function mostrarPantallaEntrevista() {
+
+    document.getElementById("pantalla-inicio").classList.remove("activa");
+
+    document.getElementById("pantalla-entrevista").classList.add("activa");
+
+    if (window.FondoParticulas) {
+        window.FondoParticulas.iniciar("fondo-particulas");
+    }
+}
 
 
 // ----------------------------------------
@@ -156,8 +172,10 @@ botonComenzar.addEventListener("click", iniciarEntrevista);
 async function iniciarEntrevista() {
 
     botonComenzar.disabled = true;
+
+    mostrarPantallaEntrevista();
+
     textoEstado.textContent = "Conectando con la IA...";
-    indicador.classList.add("pensando");
 
     try {
 
@@ -187,7 +205,6 @@ async function iniciarEntrevista() {
 
         console.error("Error al iniciar la entrevista:", error);
         textoEstado.textContent = "Error: " + error.message;
-        indicador.classList.remove("pensando");
         botonComenzar.disabled = false;
     }
 }
@@ -272,14 +289,12 @@ function conectarWebSocket(token) {
 
         console.log("WebSocket cerrado:", evento.code, evento.reason);
         textoEstado.textContent = "Conversación finalizada.";
-        indicador.classList.remove("pensando", "hablando", "escuchando");
     });
 
     websocket.addEventListener("error", (evento) => {
 
         console.error("Error en el WebSocket:", evento);
         textoEstado.textContent = "Se perdió la conexión con la IA.";
-        indicador.classList.remove("pensando", "hablando", "escuchando");
     });
 }
 
@@ -289,8 +304,6 @@ function procesarMensaje(mensaje) {
     if (mensaje.setupComplete) {
 
         textoEstado.textContent = "Escuchando...";
-        indicador.classList.remove("pensando");
-        indicador.classList.add("escuchando");
 
         // Le pedimos que arranque ella con su saludo/
         // presentación, en vez de esperar a que el usuario
@@ -326,15 +339,10 @@ function procesarMensaje(mensaje) {
 
         scheduledSources = [];
         nextStartTime = 0;
-
-        indicador.classList.remove("hablando");
-        indicador.classList.add("escuchando");
     }
 
     if (contenido.modelTurn && contenido.modelTurn.parts) {
 
-        indicador.classList.remove("escuchando", "pensando");
-        indicador.classList.add("hablando");
         textoEstado.textContent = "La IA está hablando...";
 
         for (const parte of contenido.modelTurn.parts) {
@@ -355,8 +363,6 @@ function procesarMensaje(mensaje) {
 
     if (contenido.turnComplete) {
 
-        indicador.classList.remove("hablando");
-        indicador.classList.add("escuchando");
         textoEstado.textContent = "Escuchando...";
     }
 }
@@ -399,6 +405,17 @@ async function iniciarMicrofono() {
 
     audioContext = new AudioContext();
     await audioContext.resume();
+
+    // Analizador de audio: le da al fondo de partículas el
+    // volumen real en tiempo real, para que se intensifique
+    // cuando LEDA está hablando.
+    analizadorAudio = audioContext.createAnalyser();
+    analizadorAudio.fftSize = 256;
+    analizadorAudio.smoothingTimeConstant = 0.4;
+
+    if (window.FondoParticulas) {
+        window.FondoParticulas.conectarAnalizador(analizadorAudio);
+    }
 
     await audioContext.audioWorklet.addModule("mic-processor.js");
 
@@ -498,6 +515,11 @@ function programarReproduccion(buffer) {
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
     source.connect(audioContext.destination);
+
+    if (analizadorAudio) {
+        source.connect(analizadorAudio);
+    }
+
     source.start(nextStartTime);
 
     scheduledSources.push(source);

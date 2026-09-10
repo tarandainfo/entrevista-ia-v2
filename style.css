@@ -6,124 +6,133 @@ body {
     margin: 0;
     min-height: 100vh;
 
-    display: flex;
+    background: #040910;
+    color: #E8F1F7;
+
+    font-family: 'Inter', sans-serif;
+    overflow: hidden;
+}
+
+/* ----------------------------------------
+   Pantallas (inicio / entrevista)
+   ---------------------------------------- */
+
+.pantalla {
+    display: none;
+
+    width: 100vw;
+    height: 100vh;
+
     align-items: center;
     justify-content: center;
 
-    background: #111111;
-    color: #f2f2f2;
-
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-        Helvetica, Arial, sans-serif;
+    position: relative;
 }
 
-.entrevista {
-    width: 90%;
-    max-width: 500px;
+.pantalla.activa {
+    display: flex;
+}
+
+/* ----------------------------------------
+   Pantalla de inicio
+   ---------------------------------------- */
+
+#pantalla-inicio {
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
+}
+
+.marca {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 48px;
+    letter-spacing: 1px;
+    color: #ffffff;
+    margin: 0 0 8px;
+    text-shadow: 0 0 30px rgba(24, 180, 240, 0.4);
+}
+
+.marca span {
+    color: #18B4F0;
+}
+
+.tagline {
+    font-size: 13px;
+    color: #6E8494;
+    letter-spacing: 0.5px;
+    margin: 0 0 56px;
+}
+
+#comenzar {
+    background: #18B4F0;
+    color: #040910;
+
+    border: none;
+    padding: 15px 38px;
+    border-radius: 999px;
+
+    font-size: 15px;
+    font-weight: 500;
+    font-family: 'Inter', sans-serif;
+
+    cursor: pointer;
+}
+
+#comenzar:hover {
+    opacity: 0.9;
+}
+
+#comenzar:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+/* ----------------------------------------
+   Pantalla de entrevista
+   ---------------------------------------- */
+
+#fondo-particulas {
+    position: absolute;
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    display: block;
+}
+
+.contenido-entrevista {
+    position: relative;
+    z-index: 1;
 
     text-align: center;
-    padding: 32px 16px;
+    padding: 24px;
+
+    max-width: 560px;
+    width: 90%;
 }
 
-h1 {
-    margin-bottom: 32px;
-}
-
-/* Indicador circular: reemplaza al avatar por ahora.
-   Un círculo simple con un brillo que cambia según el
-   estado (pensando / hablando / escuchando). */
-
-.indicador {
-    width: 160px;
-    height: 160px;
-
-    margin: 0 auto 32px;
-    border-radius: 50%;
-
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    background: radial-gradient(
-        circle at 50% 40%,
-        #2a3a55 0%,
-        #101622 70%,
-        #0a0d14 100%
-    );
-
-    box-shadow: 0 0 30px rgba(80, 130, 220, 0.15);
-    transition: box-shadow 0.3s ease;
-}
-
-.indicador-nucleo {
-    width: 60%;
-    height: 60%;
-    border-radius: 50%;
-
-    background: radial-gradient(
-        circle,
-        rgba(140, 190, 255, 0.55) 0%,
-        rgba(140, 190, 255, 0) 70%
-    );
-
-    animation: respirar 3.5s ease-in-out infinite;
-}
-
-@keyframes respirar {
-    0%, 100% { transform: scale(0.92); opacity: 0.7; }
-    50%      { transform: scale(1.05); opacity: 1; }
-}
-
-.indicador.pensando {
-    box-shadow: 0 0 40px rgba(255, 255, 255, 0.25);
-}
-
-.indicador.hablando {
-    box-shadow: 0 0 45px rgba(120, 170, 255, 0.45);
-}
-
-.indicador.hablando .indicador-nucleo {
-    animation-duration: 0.9s;
-}
-
-.indicador.escuchando {
-    box-shadow: 0 0 35px rgba(110, 220, 190, 0.3);
+.marca-chica {
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 800;
+    font-size: 14px;
+    letter-spacing: 3px;
+    color: #18B4F0;
+    margin: 0 0 24px;
 }
 
 #estado {
     font-size: 15px;
-    color: #cfcfcf;
+    color: #C7E4F5;
     min-height: 20px;
-    margin-bottom: 12px;
+    margin-bottom: 16px;
 }
 
 #transcripcion {
     font-size: 14px;
-    color: #9fa6b2;
+    color: #6E8494;
     min-height: 40px;
-    margin-bottom: 24px;
     white-space: pre-wrap;
-}
-
-button {
-    padding: 12px 28px;
-    font-size: 15px;
-
-    background: #f2f2f2;
-    color: #111111;
-
-    border: none;
-    border-radius: 999px;
-    cursor: pointer;
-
-    transition: opacity 0.2s ease;
-}
-
-button:hover {
-    opacity: 0.85;
-}
-
-button:disabled {
-    opacity: 0.4;
-    cursor: default;
+    line-height: 1.6;
 }
