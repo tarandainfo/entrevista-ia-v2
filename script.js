@@ -1,0 +1,370 @@
+// ========================================
+// ENTREVISTA IA — LÓGICA PRINCIPAL
+// ========================================
+//
+// Reconstrucción ordenada del proyecto. Reusa las partes
+// que ya sabíamos que funcionaban: conexión con Gemini
+// Live, voz femenina (Leda), transcripción, reproducción
+// de audio sin cortes, y captura de micrófono con
+// AudioWorklet. Sin avatar por ahora: el feedback visual
+// es un simple círculo que cambia de estado.
+//
+// Si algo del protocolo de Gemini no coincide (esta es la
+// parte más delicada de reconstruir sin poder probarla en
+// vivo), quedan console.log() de los mensajes crudos para
+// poder diagnosticar rápido.
+
+const SYSTEM_PROMPT = `
+Sos una entrevistadora profesional de InfoNegocios Paraguay.
+Hacés como máximo 5 preguntas, adaptando cada una a la
+respuesta anterior de la persona entrevistada. Tu tono es
+cálido, cercano y profesional. Hablás en español rioplatense/
+paraguayo neutro. Empezá presentándote brevemente y explicando
+que vas a hacer algunas preguntas para la entrevista.
+`.trim();
+
+const MODELO = "models/gemini-3.1-flash-live-preview";
+const VOZ = "Leda";
+
+
+// ----------------------------------------
+// ESTADO GLOBAL
+// ----------------------------------------
+
+let websocket = null;
+let audioContext = null;
+let microphoneStream = null;
+let procesadorMicrofono = null;
+
+// Cursor de tiempo para programar los buffers de audio
+// uno pegado al otro, sin depender de "onended" (eso es
+// lo que generaba cortes/chasquidos).
+let nextStartTime = 0;
+let scheduledSources = [];
+
+
+// ----------------------------------------
+// ELEMENTOS DEL DOM
+// ----------------------------------------
+
+const botonComenzar = document.getElementById("comenzar");
+const textoEstado = document.getElementById("estado");
+const textoTranscripcion = document.getElementById("transcripcion");
+const indicador = document.getElementById("indicador");
+
+botonComenzar.addEventListener("click", iniciarEntrevista);
+
+
+// ----------------------------------------
+// INICIO DE LA ENTREVISTA
+// ----------------------------------------
+
+async function iniciarEntrevista() {
+
+    botonComenzar.disabled = true;
+    textoEstado.textContent = "Conectando con la IA...";
+    indicador.classList.add("pensando");
+
+    try {
+
+        // 1. Pedimos un token temporal (Cloudflare Pages Function).
+        const respuesta = await fetch("/token");
+
+        if (!respuesta.ok) {
+            throw new Error("No se pudo obtener el token de Gemini.");
+        }
+
+        const datos = await respuesta.json();
+        const token = datos.token;
+
+        if (!token) {
+            throw new Error("La respuesta del servidor no incluyó un token.");
+        }
+
+        // 2. Preparamos el audio (micrófono + reproducción)
+        //    antes de abrir la conexión, para no perder los
+        //    primeros milisegundos de audio de la IA.
+        await iniciarMicrofono();
+
+        // 3. Abrimos la conexión en vivo con Gemini.
+        conectarWebSocket(token);
+
+    } catch (error) {
+
+        console.error("Error al iniciar la entrevista:", error);
+        textoEstado.textContent = "Error: " + error.message;
+        indicador.classList.remove("pensando");
+        botonComenzar.disabled = false;
+    }
+}
+
+
+// ----------------------------------------
+// CONEXIÓN CON GEMINI LIVE
+// ----------------------------------------
+
+function conectarWebSocket(token) {
+
+    const url =
+        "wss://generativelanguage.googleapis.com/ws/" +
+        "google.ai.generativelanguage.v1alpha.GenerativeService." +
+        "BidiGenerateContentConstrained?key=" + token;
+
+    websocket = new WebSocket(url);
+
+    websocket.addEventListener("open", () => {
+
+        console.log("WebSocket abierto, enviando setup...");
+
+        websocket.send(JSON.stringify({
+            setup: {
+                model: MODELO,
+
+                generationConfig: {
+                    responseModalities: ["AUDIO"],
+
+                    speechConfig: {
+                        voiceConfig: {
+                            prebuiltVoiceConfig: {
+                                voiceName: VOZ
+                            }
+                        }
+                    }
+                },
+
+                systemInstruction: {
+                    parts: [{ text: SYSTEM_PROMPT }]
+                },
+
+                inputAudioTranscription: {},
+                outputAudioTranscription: {}
+            }
+        }));
+    });
+
+    websocket.addEventListener("message", async (evento) => {
+
+        let texto = evento.data;
+
+        // Los mensajes pueden llegar como Blob; los
+        // convertimos a texto antes de parsear JSON.
+        if (texto instanceof Blob) {
+            texto = await texto.text();
+        }
+
+        let mensaje;
+
+        try {
+            mensaje = JSON.parse(texto);
+        } catch (error) {
+            console.warn("Mensaje no-JSON recibido, se ignora:", texto);
+            return;
+        }
+
+        // Para diagnosticar rápido si algo del protocolo
+        // no coincide con lo esperado.
+        console.log("Mensaje de Gemini:", mensaje);
+
+        procesarMensaje(mensaje);
+    });
+
+    websocket.addEventListener("close", (evento) => {
+
+        console.log("WebSocket cerrado:", evento.code, evento.reason);
+        textoEstado.textContent = "Conversación finalizada.";
+        indicador.classList.remove("pensando", "hablando", "escuchando");
+    });
+
+    websocket.addEventListener("error", (evento) => {
+
+        console.error("Error en el WebSocket:", evento);
+        textoEstado.textContent = "Se perdió la conexión con la IA.";
+        indicador.classList.remove("pensando", "hablando", "escuchando");
+    });
+}
+
+
+function procesarMensaje(mensaje) {
+
+    if (mensaje.setupComplete) {
+
+        textoEstado.textContent = "Escuchando...";
+        indicador.classList.remove("pensando");
+        indicador.classList.add("escuchando");
+        return;
+    }
+
+    const contenido = mensaje.serverContent;
+
+    if (!contenido) {
+        return;
+    }
+
+    if (contenido.interrupted) {
+
+        // Cortamos todos los buffers programados y
+        // reiniciamos el cursor de tiempo.
+        scheduledSources.forEach((fuente) => {
+            try { fuente.stop(); } catch (e) { /* ya había terminado */ }
+        });
+
+        scheduledSources = [];
+        nextStartTime = 0;
+
+        indicador.classList.remove("hablando");
+        indicador.classList.add("escuchando");
+    }
+
+    if (contenido.modelTurn && contenido.modelTurn.parts) {
+
+        indicador.classList.remove("escuchando", "pensando");
+        indicador.classList.add("hablando");
+        textoEstado.textContent = "La IA está hablando...";
+
+        for (const parte of contenido.modelTurn.parts) {
+
+            if (parte.inlineData && parte.inlineData.data) {
+                reproducirAudio(parte.inlineData.data);
+            }
+        }
+    }
+
+    if (contenido.inputTranscription && contenido.inputTranscription.text) {
+        agregarTranscripcion("Vos: " + contenido.inputTranscription.text);
+    }
+
+    if (contenido.outputTranscription && contenido.outputTranscription.text) {
+        agregarTranscripcion("IA: " + contenido.outputTranscription.text);
+    }
+
+    if (contenido.turnComplete) {
+
+        indicador.classList.remove("hablando");
+        indicador.classList.add("escuchando");
+        textoEstado.textContent = "Escuchando...";
+    }
+}
+
+
+function agregarTranscripcion(linea) {
+    textoTranscripcion.textContent += linea + "\n";
+}
+
+
+// ----------------------------------------
+// MICRÓFONO (AUDIO WORKLET)
+// ----------------------------------------
+
+async function iniciarMicrofono() {
+
+    microphoneStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+            channelCount: 1,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+        }
+    });
+
+    audioContext = new AudioContext();
+    await audioContext.resume();
+
+    await audioContext.audioWorklet.addModule("mic-processor.js");
+
+    const source = audioContext.createMediaStreamSource(microphoneStream);
+
+    procesadorMicrofono = new AudioWorkletNode(audioContext, "mic-processor");
+
+    procesadorMicrofono.port.onmessage = (evento) => {
+
+        if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+
+        const base64 = arrayBufferABase64(evento.data);
+
+        websocket.send(JSON.stringify({
+            realtimeInput: {
+                audio: {
+                    data: base64,
+                    mimeType: "audio/pcm;rate=16000"
+                }
+            }
+        }));
+    };
+
+    source.connect(procesadorMicrofono);
+    // No conectamos a destination: no queremos escuchar
+    // nuestro propio micrófono por los parlantes.
+}
+
+
+// ----------------------------------------
+// REPRODUCCIÓN DE AUDIO SIN CORTES
+// ----------------------------------------
+
+async function reproducirAudio(base64) {
+
+    if (!audioContext) {
+        return;
+    }
+
+    const binario = atob(base64);
+    const bytes = new Uint8Array(binario.length);
+
+    for (let i = 0; i < binario.length; i++) {
+        bytes[i] = binario.charCodeAt(i);
+    }
+
+    const int16 = new Int16Array(bytes.buffer);
+    const float32 = new Float32Array(int16.length);
+
+    for (let i = 0; i < int16.length; i++) {
+        float32[i] = int16[i] / 32768;
+    }
+
+    const buffer = audioContext.createBuffer(1, float32.length, 24000);
+    buffer.getChannelData(0).set(float32);
+
+    programarReproduccion(buffer);
+}
+
+
+function programarReproduccion(buffer) {
+
+    const ahora = audioContext.currentTime;
+
+    if (nextStartTime < ahora) {
+        nextStartTime = ahora;
+    }
+
+    const source = audioContext.createBufferSource();
+    source.buffer = buffer;
+    source.connect(audioContext.destination);
+    source.start(nextStartTime);
+
+    scheduledSources.push(source);
+
+    source.onended = () => {
+        scheduledSources = scheduledSources.filter((s) => s !== source);
+    };
+
+    nextStartTime += buffer.duration;
+}
+
+
+// ========================================
+// ARRAY BUFFER → BASE64
+// ========================================
+
+function arrayBufferABase64(buffer) {
+
+    const bytes = new Uint8Array(buffer);
+    let binario = "";
+
+    for (let i = 0; i < bytes.length; i++) {
+        binario += String.fromCharCode(bytes[i]);
+    }
+
+    return btoa(binario);
+}
