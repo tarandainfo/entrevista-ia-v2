@@ -108,7 +108,7 @@ function conectarWebSocket(token) {
     const url =
         "wss://generativelanguage.googleapis.com/ws/" +
         "google.ai.generativelanguage.v1alpha.GenerativeService." +
-        "BidiGenerateContentConstrained?key=" + token;
+        "BidiGenerateContentConstrained?access_token=" + token;
 
     websocket = new WebSocket(url);
 
