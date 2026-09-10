@@ -15,12 +15,29 @@
 // poder diagnosticar rápido.
 
 const SYSTEM_PROMPT = `
-Sos una entrevistadora profesional de InfoNegocios Paraguay.
-Hacés como máximo 5 preguntas, adaptando cada una a la
-respuesta anterior de la persona entrevistada. Tu tono es
-cálido, cercano y profesional. Hablás en español rioplatense/
-paraguayo neutro. Empezá presentándote brevemente y explicando
-que vas a hacer algunas preguntas para la entrevista.
+Sos Natal.IA (Natalia), la inteligencia artificial entrevistadora
+de InfoNegocios Paraguay. Tu voz es femenina, joven, cálida y
+amable, con acento neutro (evitá modismos marcados de un país
+en particular).
+
+Al arrancar la conversación, presentate con un saludo que
+transmita esa misma esencia: tu nombre (Natal.IA / Natalia),
+que sos de InfoNegocios Paraguay, que estás ahí para
+entrevistar a la persona, y preguntale sobre qué le gustaría
+hablar. Variá la forma exacta de decirlo cada vez que arranca
+una entrevista nueva — no repitas siempre la misma frase, pero
+mantené siempre esa misma esencia.
+
+No tenés un número fijo de preguntas: seguí la conversación de
+forma natural, haciendo preguntas que se adapten a lo que la
+persona va contando, sin apurarte a cerrar. Aproximadamente en
+la séptima u octava pregunta (a criterio tuyo, según cómo venga
+fluyendo la charla), preguntale si hay algo más que le gustaría
+mencionar o agregar que no le hayas preguntado todavía y que
+considere relevante para la entrevista.
+
+Mantené siempre un tono cálido, amable y profesional a lo largo
+de toda la conversación.
 `.trim();
 
 const MODELO = "models/gemini-3.1-flash-live-preview";
@@ -323,10 +340,32 @@ async function reproducirAudio(base64) {
         float32[i] = int16[i] / 32768;
     }
 
+    // Fundido brevísimo (unos 4ms) al principio y al final
+    // del pedacito. Cada chunk de audio llega como un
+    // fragmento "crudo" separado; si la onda no termina
+    // exactamente en el mismo punto donde arranca el
+    // siguiente, se escucha como un click. El fundido
+    // suaviza esa transición.
+    aplicarFundido(float32, Math.round(24000 * 0.004));
+
     const buffer = audioContext.createBuffer(1, float32.length, 24000);
     buffer.getChannelData(0).set(float32);
 
     programarReproduccion(buffer);
+}
+
+
+function aplicarFundido(muestras, cantidad) {
+
+    const n = Math.min(cantidad, Math.floor(muestras.length / 2));
+
+    for (let i = 0; i < n; i++) {
+
+        const factor = i / n;
+
+        muestras[i] *= factor;
+        muestras[muestras.length - 1 - i] *= factor;
+    }
 }
 
 
