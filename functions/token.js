@@ -76,6 +76,11 @@ entrevista terminó, invitación a la selfie mencionando
 @infonegociospy, su nombre, y el deseo de que disfrute
 Exponegocios.
 
+Al mencionar la cuenta @infonegociospy en voz alta, pronunciala
+letra por letra en español: "arroba infonegocios, pe, i griega"
+— no la digas como si fuera una palabra en inglés (evitá que
+suene como "pai").
+
 Mantené siempre un tono cálido, amable y profesional a lo largo
 de toda la conversación.
 
@@ -170,6 +175,10 @@ export async function onRequestGet(context) {
                                 }
                             },
                             languageCode: "es-419"
+                        },
+
+                        thinkingConfig: {
+                            thinkingBudget: 0
                         },
 
                         systemInstruction: {
