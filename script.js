@@ -176,7 +176,6 @@ let scheduledSources = [];
 const botonComenzar = document.getElementById("comenzar");
 const contenedorEstado = document.getElementById("estado");
 const textoEstadoSpan = document.getElementById("texto-estado");
-const subtitulo = document.getElementById("subtitulo");
 const contenedorProgreso = document.getElementById("progreso");
 
 const TOTAL_PREGUNTAS = 10;
@@ -241,28 +240,6 @@ function actualizarProgreso() {
 }
 
 
-let hablanteActualSubtitulo = null;
-let temporizadorDesvanecido = null;
-
-function actualizarSubtitulo(hablante, texto) {
-
-    if (hablanteActualSubtitulo !== hablante) {
-        subtitulo.textContent = "";
-        hablanteActualSubtitulo = hablante;
-    }
-
-    subtitulo.textContent += texto;
-    subtitulo.classList.remove("desvanecido");
-
-    clearTimeout(temporizadorDesvanecido);
-
-    temporizadorDesvanecido = setTimeout(() => {
-        subtitulo.classList.add("desvanecido");
-        hablanteActualSubtitulo = null;
-    }, 3500);
-}
-
-
 // ----------------------------------------
 // CAMBIO DE PANTALLA
 // ----------------------------------------
@@ -289,8 +266,15 @@ async function iniciarEntrevista() {
 
     try {
 
-        // 1. Pedimos un token temporal (Cloudflare Pages Function).
-        const respuesta = await fetch("/token");
+        // Pedimos el token y preparamos el audio (micrófono +
+        // reproducción) al mismo tiempo — son dos cosas
+        // independientes, no hace falta esperar una para
+        // arrancar la otra. Esto acorta bastante el tiempo
+        // hasta que LEDA arranca a hablar.
+        const [respuesta] = await Promise.all([
+            fetch("/token"),
+            iniciarMicrofono()
+        ]);
 
         if (!respuesta.ok) {
             throw new Error("No se pudo obtener el token de Gemini.");
@@ -303,12 +287,7 @@ async function iniciarEntrevista() {
             throw new Error("La respuesta del servidor no incluyó un token.");
         }
 
-        // 2. Preparamos el audio (micrófono + reproducción)
-        //    antes de abrir la conexión, para no perder los
-        //    primeros milisegundos de audio de la IA.
-        await iniciarMicrofono();
-
-        // 3. Abrimos la conexión en vivo con Gemini.
+        // Abrimos la conexión en vivo con Gemini.
         conectarWebSocket(token);
 
     } catch (error) {
@@ -365,9 +344,8 @@ function conectarWebSocket(token) {
                 realtimeInputConfig: {
                     automaticActivityDetection: {
                         startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
-                        endOfSpeechSensitivity: "END_SENSITIVITY_HIGH",
-                        prefixPaddingMs: 200,
-                        silenceDurationMs: 300
+                        prefixPaddingMs: 250,
+                        silenceDurationMs: 450
                     }
                 },
 
@@ -469,14 +447,6 @@ function procesarMensaje(mensaje) {
                 reproducirAudio(parte.inlineData.data);
             }
         }
-    }
-
-    if (contenido.inputTranscription && contenido.inputTranscription.text) {
-        actualizarSubtitulo("usuario", contenido.inputTranscription.text);
-    }
-
-    if (contenido.outputTranscription && contenido.outputTranscription.text) {
-        actualizarSubtitulo("ia", contenido.outputTranscription.text);
     }
 
     if (contenido.turnComplete) {

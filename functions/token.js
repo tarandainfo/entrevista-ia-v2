@@ -188,9 +188,8 @@ export async function onRequestGet(context) {
                         realtimeInputConfig: {
                             automaticActivityDetection: {
                                 startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
-                                endOfSpeechSensitivity: "END_SENSITIVITY_HIGH",
-                                prefixPaddingMs: 200,
-                                silenceDurationMs: 300
+                                prefixPaddingMs: 250,
+                                silenceDurationMs: 450
                             }
                         },
 
