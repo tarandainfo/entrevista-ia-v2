@@ -285,7 +285,10 @@ function conectarWebSocket(token) {
 
                 realtimeInputConfig: {
                     automaticActivityDetection: {
-                        silenceDurationMs: 500
+                        startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
+                        endOfSpeechSensitivity: "END_SENSITIVITY_HIGH",
+                        prefixPaddingMs: 200,
+                        silenceDurationMs: 300
                     }
                 },
 
@@ -507,13 +510,19 @@ async function reproducirAudio(base64) {
         float32[i] = int16[i] / 32768;
     }
 
-    // Fundido brevísimo (unos 4ms) al principio y al final
-    // del pedacito. Cada chunk de audio llega como un
-    // fragmento "crudo" separado; si la onda no termina
-    // exactamente en el mismo punto donde arranca el
-    // siguiente, se escucha como un click. El fundido
-    // suaviza esa transición.
-    aplicarFundido(float32, Math.round(24000 * 0.004));
+    // Fundido brevísimo al principio y al final del pedacito,
+    // para evitar el click entre chunks. Lo limitamos a como
+    // mucho un 8% del pedacito (además del tope de 4ms): si
+    // el pedacito es corto, un fundido fijo de 4ms puede
+    // terminar afectando una porción grande de la onda y sonar
+    // como un aleteo/eco metálico. Así nunca es más que una
+    // fracción chica, sea cual sea el tamaño real del chunk.
+    const muestrasFundido = Math.min(
+        Math.round(24000 * 0.004),
+        Math.floor(float32.length * 0.08)
+    );
+
+    aplicarFundido(float32, muestrasFundido);
 
     const buffer = audioContext.createBuffer(1, float32.length, 24000);
     buffer.getChannelData(0).set(float32);
@@ -524,7 +533,7 @@ async function reproducirAudio(base64) {
 
 function aplicarFundido(muestras, cantidad) {
 
-    const n = Math.min(cantidad, Math.floor(muestras.length / 2));
+    const n = Math.min(cantidad, Math.floor(muestras.length / 4));
 
     for (let i = 0; i < n; i++) {
 
