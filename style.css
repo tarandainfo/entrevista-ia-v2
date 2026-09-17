@@ -14,6 +14,21 @@ body {
 }
 
 /* ----------------------------------------
+   Fondo de partículas (global, siempre presente)
+   ---------------------------------------- */
+
+#fondo-particulas {
+    position: fixed;
+    inset: 0;
+
+    width: 100%;
+    height: 100%;
+
+    z-index: 0;
+    display: block;
+}
+
+/* ----------------------------------------
    Pantallas (inicio / entrevista)
    ---------------------------------------- */
 
@@ -27,6 +42,7 @@ body {
     justify-content: center;
 
     position: relative;
+    z-index: 1;
 }
 
 .pantalla.activa {
@@ -50,7 +66,6 @@ body {
     letter-spacing: 1px;
     color: #ffffff;
     margin: 0 0 8px;
-    text-shadow: 0 0 30px rgba(24, 180, 240, 0.4);
 }
 
 .marca span {
@@ -89,23 +104,19 @@ body {
 }
 
 /* ----------------------------------------
+   Elementos que reaccionan al volumen de voz
+   (el brillo lo controla particles.js en cada frame)
+   ---------------------------------------- */
+
+.reactivo-audio {
+    transition: text-shadow 0.15s ease;
+}
+
+/* ----------------------------------------
    Pantalla de entrevista
    ---------------------------------------- */
 
-#fondo-particulas {
-    position: absolute;
-    inset: 0;
-
-    width: 100%;
-    height: 100%;
-
-    display: block;
-}
-
 .contenido-entrevista {
-    position: relative;
-    z-index: 1;
-
     text-align: center;
     padding: 24px;
 
@@ -116,23 +127,86 @@ body {
 .marca-chica {
     font-family: 'Montserrat', sans-serif;
     font-weight: 800;
-    font-size: 14px;
+    font-size: 22px;
     letter-spacing: 3px;
     color: #18B4F0;
-    margin: 0 0 24px;
+    margin: 0 0 20px;
 }
+
+/* Puntos de progreso (aprox. 1 por pregunta, hasta 10) */
+
+.progreso {
+    display: flex;
+    justify-content: center;
+    gap: 6px;
+    margin-bottom: 28px;
+    min-height: 8px;
+}
+
+.progreso .punto {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: rgba(24, 180, 240, 0.18);
+    transition: background 0.3s ease;
+}
+
+.progreso .punto.completado {
+    background: #18B4F0;
+}
+
+/* Estado (escuchando / hablando / etc.) */
 
 #estado {
-    font-size: 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+
+    font-size: 14px;
     color: #C7E4F5;
     min-height: 20px;
-    margin-bottom: 16px;
+    margin-bottom: 28px;
 }
 
-#transcripcion {
-    font-size: 14px;
-    color: #6E8494;
-    min-height: 40px;
-    white-space: pre-wrap;
-    line-height: 1.6;
+.punto-estado {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #6E8494;
+    flex-shrink: 0;
+}
+
+#estado.escuchando .punto-estado {
+    background: #18B4F0;
+    animation: latido 1.4s ease-in-out infinite;
+}
+
+#estado.hablando .punto-estado {
+    background: #ffffff;
+    animation: none;
+}
+
+@keyframes latido {
+    0%, 100% { opacity: 0.4; transform: scale(0.85); }
+    50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* Subtítulo: una sola línea, con fundido, no acumula texto */
+
+#subtitulo {
+    font-size: 15px;
+    color: #C7E4F5;
+    line-height: 1.5;
+
+    min-height: 48px;
+    max-width: 480px;
+    margin: 0 auto;
+
+    opacity: 1;
+    transition: opacity 0.6s ease;
+}
+
+#subtitulo.desvanecido {
+    opacity: 0;
 }

@@ -162,6 +162,23 @@
             ctx.arc(p.x, p.y, 1.6 + nivelSuavizado * 0.8, 0, Math.PI * 2);
             ctx.fill();
         }
+
+        actualizarBrilloReactivo(nivelSuavizado);
+    }
+
+
+    function actualizarBrilloReactivo(nivel) {
+
+        const elementos = document.querySelectorAll(".reactivo-audio");
+
+        const intensidad = 14 + nivel * 46;
+        const opacidad = 0.35 + nivel * 0.55;
+
+        const sombra = "0 0 " + intensidad + "px rgba(" + COLOR + ", " + opacidad + ")";
+
+        for (const el of elementos) {
+            el.style.textShadow = sombra;
+        }
     }
 
 

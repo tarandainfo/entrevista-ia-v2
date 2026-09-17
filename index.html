@@ -12,29 +12,36 @@
 </head>
 <body>
 
+    <!-- Fondo de partículas: cubre toda la página, siempre
+         animado (calmo antes de arrancar, se intensifica
+         cuando LEDA habla). -->
+    <canvas id="fondo-particulas"></canvas>
+
     <!-- Pantalla 1: inicio, antes de arrancar la entrevista. -->
     <section id="pantalla-inicio" class="pantalla activa">
 
-        <p class="marca">LE<span>DA</span></p>
+        <p class="marca">LE<span class="reactivo-audio">DA</span></p>
         <p class="tagline">InfoNegocios Paraguay</p>
 
         <button id="comenzar">Comenzar entrevista</button>
 
     </section>
 
-    <!-- Pantalla 2: la entrevista en curso, con el fondo de
-         partículas que se intensifica cuando LEDA habla. -->
+    <!-- Pantalla 2: la entrevista en curso. -->
     <section id="pantalla-entrevista" class="pantalla">
-
-        <canvas id="fondo-particulas"></canvas>
 
         <div class="contenido-entrevista">
 
-            <p class="marca-chica">LEDA</p>
+            <p class="marca-chica reactivo-audio">LEDA</p>
 
-            <p id="estado">Conectando...</p>
+            <div class="progreso" id="progreso"></div>
 
-            <p id="transcripcion"></p>
+            <p id="estado">
+                <span class="punto-estado" id="punto-estado"></span>
+                <span id="texto-estado">Conectando...</span>
+            </p>
+
+            <p id="subtitulo"></p>
 
         </div>
 

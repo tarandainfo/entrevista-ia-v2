@@ -174,10 +174,93 @@ let scheduledSources = [];
 // ----------------------------------------
 
 const botonComenzar = document.getElementById("comenzar");
-const textoEstado = document.getElementById("estado");
-const textoTranscripcion = document.getElementById("transcripcion");
+const contenedorEstado = document.getElementById("estado");
+const textoEstadoSpan = document.getElementById("texto-estado");
+const subtitulo = document.getElementById("subtitulo");
+const contenedorProgreso = document.getElementById("progreso");
+
+const TOTAL_PREGUNTAS = 10;
+let contadorTurnosIA = 0;
 
 botonComenzar.addEventListener("click", iniciarEntrevista);
+
+// El fondo de partículas arranca ya desde que carga la
+// página (calmo), no recién al empezar la entrevista.
+if (window.FondoParticulas) {
+    window.FondoParticulas.iniciar("fondo-particulas");
+}
+
+crearPuntosDeProgreso();
+
+
+// ----------------------------------------
+// ESTADO / PROGRESO / SUBTÍTULO EN VIVO
+// ----------------------------------------
+
+function actualizarEstado(texto, clase) {
+
+    textoEstadoSpan.textContent = texto;
+    contenedorEstado.classList.remove("escuchando", "hablando");
+
+    if (clase) {
+        contenedorEstado.classList.add(clase);
+    }
+}
+
+
+function crearPuntosDeProgreso() {
+
+    for (let i = 0; i < TOTAL_PREGUNTAS; i++) {
+
+        const punto = document.createElement("span");
+        punto.className = "punto";
+
+        contenedorProgreso.appendChild(punto);
+    }
+}
+
+
+function actualizarProgreso() {
+
+    // Aproximación: los primeros dos turnos de la IA son el
+    // saludo (+ pedido de nombre) y la pregunta del tema; a
+    // partir del tercero, los contamos como preguntas de la
+    // entrevista. No es un conteo exacto (la IA decide sola
+    // cuándo hacer cada pregunta), pero da una noción
+    // razonable de avance.
+    const preguntaActual = Math.min(
+        TOTAL_PREGUNTAS,
+        Math.max(0, contadorTurnosIA - 2)
+    );
+
+    const puntos = contenedorProgreso.querySelectorAll(".punto");
+
+    puntos.forEach((punto, indice) => {
+        punto.classList.toggle("completado", indice < preguntaActual);
+    });
+}
+
+
+let hablanteActualSubtitulo = null;
+let temporizadorDesvanecido = null;
+
+function actualizarSubtitulo(hablante, texto) {
+
+    if (hablanteActualSubtitulo !== hablante) {
+        subtitulo.textContent = "";
+        hablanteActualSubtitulo = hablante;
+    }
+
+    subtitulo.textContent += texto;
+    subtitulo.classList.remove("desvanecido");
+
+    clearTimeout(temporizadorDesvanecido);
+
+    temporizadorDesvanecido = setTimeout(() => {
+        subtitulo.classList.add("desvanecido");
+        hablanteActualSubtitulo = null;
+    }, 3500);
+}
 
 
 // ----------------------------------------
@@ -189,10 +272,6 @@ function mostrarPantallaEntrevista() {
     document.getElementById("pantalla-inicio").classList.remove("activa");
 
     document.getElementById("pantalla-entrevista").classList.add("activa");
-
-    if (window.FondoParticulas) {
-        window.FondoParticulas.iniciar("fondo-particulas");
-    }
 }
 
 
@@ -206,7 +285,7 @@ async function iniciarEntrevista() {
 
     mostrarPantallaEntrevista();
 
-    textoEstado.textContent = "Conectando con la IA...";
+    actualizarEstado("Conectando con la IA...", null);
 
     try {
 
@@ -235,7 +314,7 @@ async function iniciarEntrevista() {
     } catch (error) {
 
         console.error("Error al iniciar la entrevista:", error);
-        textoEstado.textContent = "Error: " + error.message;
+        actualizarEstado("Error: " + error.message, null);
         botonComenzar.disabled = false;
     }
 }
@@ -327,13 +406,13 @@ function conectarWebSocket(token) {
     websocket.addEventListener("close", (evento) => {
 
         console.log("WebSocket cerrado:", evento.code, evento.reason);
-        textoEstado.textContent = "Conversación finalizada.";
+        actualizarEstado("Conversación finalizada.", null);
     });
 
     websocket.addEventListener("error", (evento) => {
 
         console.error("Error en el WebSocket:", evento);
-        textoEstado.textContent = "Se perdió la conexión con la IA.";
+        actualizarEstado("Se perdió la conexión con la IA.", null);
     });
 }
 
@@ -342,7 +421,7 @@ function procesarMensaje(mensaje) {
 
     if (mensaje.setupComplete) {
 
-        textoEstado.textContent = "Escuchando...";
+        actualizarEstado("Escuchando...", "escuchando");
 
         // Le pedimos que arranque ella con su saludo/
         // presentación, en vez de esperar a que el usuario
@@ -382,7 +461,7 @@ function procesarMensaje(mensaje) {
 
     if (contenido.modelTurn && contenido.modelTurn.parts) {
 
-        textoEstado.textContent = "La IA está hablando...";
+        actualizarEstado("La IA está hablando...", "hablando");
 
         for (const parte of contenido.modelTurn.parts) {
 
@@ -393,37 +472,20 @@ function procesarMensaje(mensaje) {
     }
 
     if (contenido.inputTranscription && contenido.inputTranscription.text) {
-        agregarFragmentoTranscripcion("usuario", contenido.inputTranscription.text);
+        actualizarSubtitulo("usuario", contenido.inputTranscription.text);
     }
 
     if (contenido.outputTranscription && contenido.outputTranscription.text) {
-        agregarFragmentoTranscripcion("ia", contenido.outputTranscription.text);
+        actualizarSubtitulo("ia", contenido.outputTranscription.text);
     }
 
     if (contenido.turnComplete) {
 
-        textoEstado.textContent = "Escuchando...";
+        actualizarEstado("Escuchando...", "escuchando");
+
+        contadorTurnosIA++;
+        actualizarProgreso();
     }
-}
-
-
-let hablanteActualTranscripcion = null;
-
-function agregarFragmentoTranscripcion(hablante, texto) {
-
-    const etiqueta = hablante === "usuario" ? "Vos: " : "IA: ";
-
-    if (hablanteActualTranscripcion !== hablante) {
-
-        if (textoTranscripcion.textContent.length > 0) {
-            textoTranscripcion.textContent += "\n";
-        }
-
-        textoTranscripcion.textContent += etiqueta;
-        hablanteActualTranscripcion = hablante;
-    }
-
-    textoTranscripcion.textContent += texto;
 }
 
 
