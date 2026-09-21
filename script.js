@@ -193,10 +193,6 @@ if (window.FondoMalla) {
     window.FondoMalla.iniciar("fondo-malla");
 }
 
-crearPuntosDeProgreso();
-iniciarFrasesRotativas();
-iniciarDeteccionDeInactividad();
-
 
 // ----------------------------------------
 // ESTADO / PROGRESO
@@ -918,3 +914,12 @@ function arrayBufferABase64(buffer) {
 
     return btoa(binario);
 }
+
+
+// ----------------------------------------
+// PUESTA EN MARCHA (al final, con todo ya declarado)
+// ----------------------------------------
+
+crearPuntosDeProgreso();
+iniciarFrasesRotativas();
+iniciarDeteccionDeInactividad();
