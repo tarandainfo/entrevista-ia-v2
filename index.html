@@ -4,32 +4,36 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LEDA · InfoNegocios</title>
-
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
 
-    <!-- Fondo de partículas: cubre toda la página, siempre
-         animado (calmo antes de arrancar, se intensifica
-         cuando LEDA habla). -->
-    <canvas id="fondo-particulas"></canvas>
+    <!-- Fondo de malla líquida: cubre toda la página, siempre
+         animado (calmo antes de arrancar, se intensifica al
+         hablar, más activo aún si nadie interactúa por un
+         rato, y con un matiz sutil según el tema). -->
+    <canvas id="fondo-malla"></canvas>
 
-    <!-- Pantalla 1: inicio, antes de arrancar la entrevista. -->
+    <!-- Pantalla 1: inicio -->
     <section id="pantalla-inicio" class="pantalla activa">
 
-        <p class="marca">LE<span class="reactivo-audio">DA</span></p>
+        <p class="marca">LEDA</p>
         <p class="tagline">InfoNegocios Paraguay</p>
+
+        <p class="frase-rotativa" id="frase-rotativa"></p>
 
         <button id="comenzar">Comenzar entrevista</button>
 
+        <p class="atraeme" id="atraeme">¡Hablá con LEDA!</p>
+
     </section>
 
-    <!-- Pantalla 2: la entrevista en curso. -->
+    <!-- Pantalla 2: la entrevista en curso -->
     <section id="pantalla-entrevista" class="pantalla">
 
         <div class="contenido-entrevista">
 
-            <p class="marca-chica reactivo-audio">LEDA</p>
+            <p class="marca-chica">LEDA</p>
 
             <div class="progreso" id="progreso"></div>
 
@@ -42,7 +46,28 @@
 
     </section>
 
-    <script src="particles.js" defer></script>
+    <!-- Cronómetro -->
+    <div class="cronometro" id="cronometro">00:00</div>
+
+    <!-- Chat en vivo: última frase dicha, en una tarjeta -->
+    <div class="chat-card" id="chat-card">
+        <p class="quien" id="chat-quien"></p>
+        <p class="texto" id="chat-texto"></p>
+    </div>
+
+    <!-- Código QR para seguir a InfoNegocios -->
+    <div class="qr-card" id="qr-card">
+        <img src="assets/qr-infonegocios.png" alt="Seguí a InfoNegocios en Instagram">
+        <p>@infonegociospy</p>
+    </div>
+
+    <!-- Botón para finalizar manualmente -->
+    <button class="finalizar" id="finalizar">Finalizar entrevista</button>
+
+    <!-- Crédito de autoría -->
+    <p class="credito">InfoNegocios Paraguay</p>
+
+    <script src="fondo.js" defer></script>
     <script src="script.js" defer></script>
 </body>
 </html>

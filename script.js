@@ -2,17 +2,11 @@
 // ENTREVISTA IA — LÓGICA PRINCIPAL
 // ========================================
 //
-// Reconstrucción ordenada del proyecto. Reusa las partes
-// que ya sabíamos que funcionaban: conexión con Gemini
-// Live, voz femenina (Leda), transcripción, reproducción
-// de audio sin cortes, y captura de micrófono con
-// AudioWorklet. Sin avatar por ahora: el feedback visual
-// es un simple círculo que cambia de estado.
-//
-// Si algo del protocolo de Gemini no coincide (esta es la
-// parte más delicada de reconstruir sin poder probarla en
-// vivo), quedan console.log() de los mensajes crudos para
-// poder diagnosticar rápido.
+// Conexión con Gemini Live, voz femenina (Leda), transcripción,
+// reproducción de audio sin cortes, micrófono con AudioWorklet,
+// más: transición de pantalla con desenfoque, cronómetro, chat
+// en vivo (última frase), matiz de fondo según el tema, modo
+// "atráeme" cuando está inactiva, y botón de finalizar manual.
 
 const SYSTEM_PROMPT = `
 Sos LEDA, la IA de InfoNegocios Paraguay. Tu voz es femenina,
@@ -161,6 +155,7 @@ let audioContext = null;
 let microphoneStream = null;
 let procesadorMicrofono = null;
 let analizadorAudio = null;
+let entrevistaFinalizando = false;
 
 // Cursor de tiempo para programar los buffers de audio
 // uno pegado al otro, sin depender de "onended" (eso es
@@ -177,23 +172,34 @@ const botonComenzar = document.getElementById("comenzar");
 const contenedorEstado = document.getElementById("estado");
 const textoEstadoSpan = document.getElementById("texto-estado");
 const contenedorProgreso = document.getElementById("progreso");
+const pantallaInicio = document.getElementById("pantalla-inicio");
+const pantallaEntrevista = document.getElementById("pantalla-entrevista");
+const fraseRotativa = document.getElementById("frase-rotativa");
+const cronometro = document.getElementById("cronometro");
+const chatCard = document.getElementById("chat-card");
+const chatQuien = document.getElementById("chat-quien");
+const chatTexto = document.getElementById("chat-texto");
+const botonFinalizar = document.getElementById("finalizar");
 
 const TOTAL_PREGUNTAS = 10;
 let contadorTurnosIA = 0;
 
 botonComenzar.addEventListener("click", iniciarEntrevista);
+botonFinalizar.addEventListener("click", finalizarEntrevista);
 
-// El fondo de partículas arranca ya desde que carga la
-// página (calmo), no recién al empezar la entrevista.
-if (window.FondoParticulas) {
-    window.FondoParticulas.iniciar("fondo-particulas");
+// El fondo de malla arranca ya desde que carga la página
+// (calmo), no recién al empezar la entrevista.
+if (window.FondoMalla) {
+    window.FondoMalla.iniciar("fondo-malla");
 }
 
 crearPuntosDeProgreso();
+iniciarFrasesRotativas();
+iniciarDeteccionDeInactividad();
 
 
 // ----------------------------------------
-// ESTADO / PROGRESO / SUBTÍTULO EN VIVO
+// ESTADO / PROGRESO
 // ----------------------------------------
 
 function actualizarEstado(texto, clase) {
@@ -240,15 +246,237 @@ function actualizarProgreso() {
 }
 
 
+function reiniciarProgreso() {
+
+    contadorTurnosIA = 0;
+
+    const puntos = contenedorProgreso.querySelectorAll(".punto");
+    puntos.forEach((punto) => punto.classList.remove("completado"));
+}
+
+
 // ----------------------------------------
-// CAMBIO DE PANTALLA
+// CAMBIO DE PANTALLA (con desenfoque + foco)
 // ----------------------------------------
 
 function mostrarPantallaEntrevista() {
 
-    document.getElementById("pantalla-inicio").classList.remove("activa");
+    pantallaInicio.classList.add("transicion-salida");
 
-    document.getElementById("pantalla-entrevista").classList.add("activa");
+    setTimeout(() => {
+
+        pantallaInicio.classList.remove("activa", "transicion-salida");
+
+        pantallaEntrevista.classList.add("activa", "transicion-entrada");
+
+        setTimeout(() => {
+            pantallaEntrevista.classList.remove("transicion-entrada");
+        }, 600);
+
+    }, 500);
+
+    iniciarCronometro();
+}
+
+
+function volverAPantallaInicio() {
+
+    pantallaEntrevista.classList.add("transicion-salida");
+
+    setTimeout(() => {
+
+        pantallaEntrevista.classList.remove("activa", "transicion-salida");
+
+        pantallaInicio.classList.add("activa", "transicion-entrada");
+
+        setTimeout(() => {
+            pantallaInicio.classList.remove("transicion-entrada");
+        }, 600);
+
+    }, 500);
+
+    detenerCronometro();
+}
+
+
+// ----------------------------------------
+// CRONÓMETRO
+// ----------------------------------------
+
+let intervaloCronometro = null;
+let segundosTranscurridos = 0;
+
+function iniciarCronometro() {
+
+    segundosTranscurridos = 0;
+    actualizarTextoCronometro();
+
+    clearInterval(intervaloCronometro);
+
+    intervaloCronometro = setInterval(() => {
+        segundosTranscurridos++;
+        actualizarTextoCronometro();
+    }, 1000);
+}
+
+
+function detenerCronometro() {
+    clearInterval(intervaloCronometro);
+}
+
+
+function actualizarTextoCronometro() {
+
+    const minutos = String(Math.floor(segundosTranscurridos / 60)).padStart(2, "0");
+    const segundos = String(segundosTranscurridos % 60).padStart(2, "0");
+
+    cronometro.textContent = minutos + ":" + segundos;
+}
+
+
+// ----------------------------------------
+// FRASES ROTATIVAS (pantalla de inicio)
+// ----------------------------------------
+
+const FRASES_ROTATIVAS = [
+    "\"Contame sobre tu negocio\"",
+    "\"Compartí tu experiencia en el rubro\"",
+    "\"Hablanos de tu proyecto\"",
+    "\"Contanos una novedad de tu empresa\""
+];
+
+let indiceFrase = 0;
+
+function iniciarFrasesRotativas() {
+
+    fraseRotativa.textContent = FRASES_ROTATIVAS[0];
+    fraseRotativa.classList.add("visible");
+
+    setInterval(() => {
+
+        fraseRotativa.classList.remove("visible");
+
+        setTimeout(() => {
+            indiceFrase = (indiceFrase + 1) % FRASES_ROTATIVAS.length;
+            fraseRotativa.textContent = FRASES_ROTATIVAS[indiceFrase];
+            fraseRotativa.classList.add("visible");
+        }, 500);
+
+    }, 3200);
+}
+
+
+// ----------------------------------------
+// MODO "ATRÁEME" (inactividad en el inicio)
+// ----------------------------------------
+
+const TIEMPO_INACTIVIDAD_MS = 20000;
+let ultimaInteraccion = Date.now();
+
+["pointerdown", "touchstart", "mousemove", "keydown"].forEach((evento) => {
+    window.addEventListener(evento, () => {
+        ultimaInteraccion = Date.now();
+    });
+});
+
+function iniciarDeteccionDeInactividad() {
+
+    setInterval(() => {
+
+        if (!pantallaInicio.classList.contains("activa")) {
+
+            if (pantallaInicio.classList.contains("atrayendo")) {
+                pantallaInicio.classList.remove("atrayendo");
+                if (window.FondoMalla) {
+                    window.FondoMalla.setModoAtraeme(false);
+                }
+            }
+
+            return;
+        }
+
+        const inactivo = (Date.now() - ultimaInteraccion) > TIEMPO_INACTIVIDAD_MS;
+
+        pantallaInicio.classList.toggle("atrayendo", inactivo);
+
+        if (window.FondoMalla) {
+            window.FondoMalla.setModoAtraeme(inactivo);
+        }
+
+    }, 2000);
+}
+
+
+// ----------------------------------------
+// CHAT EN VIVO (última frase, con fundido)
+// ----------------------------------------
+
+let hablanteActualChat = null;
+let temporizadorChat = null;
+
+function actualizarChat(hablante, texto) {
+
+    if (hablanteActualChat !== hablante) {
+        chatTexto.textContent = "";
+        chatQuien.textContent = hablante === "usuario" ? "Vos" : "LEDA";
+        hablanteActualChat = hablante;
+    }
+
+    chatTexto.textContent += texto;
+    chatCard.classList.add("visible");
+
+    clearTimeout(temporizadorChat);
+
+    temporizadorChat = setTimeout(() => {
+        chatCard.classList.remove("visible");
+        hablanteActualChat = null;
+    }, 4000);
+
+    if (hablante === "usuario") {
+        detectarTemaYAjustarColor(texto);
+    }
+}
+
+
+// ----------------------------------------
+// MATIZ DE FONDO SEGÚN EL TEMA (aproximado)
+// ----------------------------------------
+//
+// Esto es una detección simple por palabras clave, no una
+// comprensión real del tema — no hay forma de saber con
+// certeza de qué está hablando la persona sin un análisis
+// más profundo. Sirve para dar una pista visual sutil, no
+// para clasificar con precisión. Los matices se mantienen
+// siempre dentro de la familia celeste/violeta/verde-agua
+// de la marca.
+
+const TEMAS = [
+    { hue: 175, palabras: ["agro", "ganaderia", "ganadería", "campo", "agricultura", "cultivo", "soja", "ganado"] },
+    { hue: 265, palabras: ["arte", "cultura", "musica", "música", "pintura", "cine", "teatro"] },
+    { hue: 195, palabras: ["deporte", "futbol", "fútbol", "deportivo", "atleta", "liga"] },
+    { hue: 185, palabras: ["salud", "medico", "médico", "clinica", "clínica", "hospital", "medicina"] },
+    { hue: 215, palabras: ["tecnologia", "tecnología", "software", "innovacion", "innovación", "startup", "digital"] },
+    { hue: 235, palabras: ["construccion", "construcción", "inmobiliaria", "inmobiliario", "edificio", "real estate", "propiedad"] },
+    { hue: 250, palabras: ["judicial", "politica", "política", "gobierno", "ley", "tribunal"] }
+];
+
+function detectarTemaYAjustarColor(texto) {
+
+    const textoNormalizado = texto.toLowerCase();
+
+    for (const tema of TEMAS) {
+        for (const palabra of tema.palabras) {
+
+            if (textoNormalizado.includes(palabra)) {
+
+                if (window.FondoMalla) {
+                    window.FondoMalla.setHueTema(tema.hue);
+                }
+
+                return;
+            }
+        }
+    }
 }
 
 
@@ -296,6 +524,60 @@ async function iniciarEntrevista() {
         actualizarEstado("Error: " + error.message, null);
         botonComenzar.disabled = false;
     }
+}
+
+
+// ----------------------------------------
+// FINALIZAR ENTREVISTA (manual o automático)
+// ----------------------------------------
+
+function finalizarEntrevista() {
+
+    if (entrevistaFinalizando) {
+        return;
+    }
+
+    entrevistaFinalizando = true;
+
+    try {
+        if (websocket) {
+            websocket.close();
+        }
+    } catch (error) {
+        // Puede que ya estuviera cerrado.
+    }
+
+    if (microphoneStream) {
+        microphoneStream.getTracks().forEach((track) => track.stop());
+    }
+
+    if (procesadorMicrofono) {
+        try { procesadorMicrofono.disconnect(); } catch (error) { /* nada que hacer */ }
+    }
+
+    if (audioContext) {
+        try { audioContext.close(); } catch (error) { /* nada que hacer */ }
+    }
+
+    volverAPantallaInicio();
+
+    websocket = null;
+    audioContext = null;
+    microphoneStream = null;
+    procesadorMicrofono = null;
+    analizadorAudio = null;
+    nextStartTime = 0;
+    scheduledSources = [];
+
+    reiniciarProgreso();
+    chatCard.classList.remove("visible");
+    hablanteActualChat = null;
+
+    botonComenzar.disabled = false;
+
+    setTimeout(() => {
+        entrevistaFinalizando = false;
+    }, 800);
 }
 
 
@@ -385,12 +667,16 @@ function conectarWebSocket(token) {
 
         console.log("WebSocket cerrado:", evento.code, evento.reason);
         actualizarEstado("Conversación finalizada.", null);
+
+        setTimeout(finalizarEntrevista, 2000);
     });
 
     websocket.addEventListener("error", (evento) => {
 
         console.error("Error en el WebSocket:", evento);
         actualizarEstado("Se perdió la conexión con la IA.", null);
+
+        setTimeout(finalizarEntrevista, 2000);
     });
 }
 
@@ -449,6 +735,14 @@ function procesarMensaje(mensaje) {
         }
     }
 
+    if (contenido.inputTranscription && contenido.inputTranscription.text) {
+        actualizarChat("usuario", contenido.inputTranscription.text);
+    }
+
+    if (contenido.outputTranscription && contenido.outputTranscription.text) {
+        actualizarChat("ia", contenido.outputTranscription.text);
+    }
+
     if (contenido.turnComplete) {
 
         actualizarEstado("Escuchando...", "escuchando");
@@ -477,15 +771,15 @@ async function iniciarMicrofono() {
     audioContext = new AudioContext();
     await audioContext.resume();
 
-    // Analizador de audio: le da al fondo de partículas el
+    // Analizador de audio: le da al fondo de malla el
     // volumen real en tiempo real, para que se intensifique
     // cuando LEDA está hablando.
     analizadorAudio = audioContext.createAnalyser();
     analizadorAudio.fftSize = 256;
     analizadorAudio.smoothingTimeConstant = 0.4;
 
-    if (window.FondoParticulas) {
-        window.FondoParticulas.conectarAnalizador(analizadorAudio);
+    if (window.FondoMalla) {
+        window.FondoMalla.conectarAnalizador(analizadorAudio);
     }
 
     await audioContext.audioWorklet.addModule("mic-processor.js");
@@ -582,7 +876,7 @@ function programarReproduccion(buffer) {
     const ahora = audioContext.currentTime;
 
     // Si el cursor quedó atrás (arranque nuevo, o hubo un
-    // hueco real), le damos un pequeño colchón de 120ms en
+    // hueco real), le damos un pequeño colchón de 200ms en
     // vez de arrancar pegado a "ahora". Así absorbemos
     // pequeños retrasos de red sin que se note como corte.
     if (nextStartTime < ahora) {

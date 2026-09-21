@@ -1,33 +1,25 @@
 @font-face {
-    font-family: 'Montserrat';
-    font-style: normal;
-    font-weight: 500;
-    font-display: swap;
-    src: url('fonts/montserrat-latin-500-normal.woff2') format('woff2');
-}
-
-@font-face {
-    font-family: 'Montserrat';
-    font-style: normal;
-    font-weight: 800;
-    font-display: swap;
-    src: url('fonts/montserrat-latin-800-normal.woff2') format('woff2');
-}
-
-@font-face {
-    font-family: 'Inter';
+    font-family: 'Sora';
     font-style: normal;
     font-weight: 400;
     font-display: swap;
-    src: url('fonts/inter-latin-400-normal.woff2') format('woff2');
+    src: url('fonts/sora-latin-400-normal.woff2') format('woff2');
 }
 
 @font-face {
-    font-family: 'Inter';
+    font-family: 'Sora';
     font-style: normal;
     font-weight: 500;
     font-display: swap;
-    src: url('fonts/inter-latin-500-normal.woff2') format('woff2');
+    src: url('fonts/sora-latin-500-normal.woff2') format('woff2');
+}
+
+@font-face {
+    font-family: 'Sora';
+    font-style: normal;
+    font-weight: 700;
+    font-display: swap;
+    src: url('fonts/sora-latin-700-normal.woff2') format('woff2');
 }
 
 * {
@@ -38,18 +30,18 @@ body {
     margin: 0;
     min-height: 100vh;
 
-    background: #040910;
-    color: #E8F1F7;
+    background: #05070C;
+    color: #F5F8FC;
 
-    font-family: 'Inter', sans-serif;
+    font-family: 'Sora', sans-serif;
     overflow: hidden;
 }
 
 /* ----------------------------------------
-   Fondo de partículas (global, siempre presente)
+   Fondo de malla líquida (global)
    ---------------------------------------- */
 
-#fondo-particulas {
+#fondo-malla {
     position: fixed;
     inset: 0;
 
@@ -73,55 +65,92 @@ body {
     align-items: center;
     justify-content: center;
 
-    position: relative;
+    position: fixed;
+    inset: 0;
     z-index: 1;
+
+    flex-direction: column;
+    text-align: center;
+    padding: 24px;
 }
 
 .pantalla.activa {
     display: flex;
 }
 
+/* Transición de desenfoque + foco entre pantallas */
+
+.pantalla.transicion-salida {
+    animation: desenfocarSalir 0.5s ease forwards;
+}
+
+@keyframes desenfocarSalir {
+    to {
+        filter: blur(20px);
+        opacity: 0;
+        transform: scale(1.05);
+    }
+}
+
+.pantalla.transicion-entrada {
+    animation: enfocarEntrar 0.6s ease forwards;
+}
+
+@keyframes enfocarEntrar {
+    from {
+        filter: blur(20px);
+        opacity: 0;
+    }
+    to {
+        filter: blur(0);
+        opacity: 1;
+    }
+}
+
 /* ----------------------------------------
    Pantalla de inicio
    ---------------------------------------- */
 
-#pantalla-inicio {
-    flex-direction: column;
-    text-align: center;
-    padding: 24px;
-}
-
 .marca {
-    font-family: 'Montserrat', sans-serif;
-    font-weight: 800;
-    font-size: 48px;
-    letter-spacing: 1px;
-    color: #ffffff;
+    font-weight: 700;
+    font-size: 52px;
+    letter-spacing: -1px;
+    color: #fff;
     margin: 0 0 8px;
-}
-
-.marca span {
-    color: #18B4F0;
+    transition: text-shadow 0.15s ease;
 }
 
 .tagline {
+    font-weight: 500;
     font-size: 13px;
-    color: #6E8494;
-    letter-spacing: 0.5px;
-    margin: 0 0 56px;
+    color: #94A3B8;
+    margin: 0 0 24px;
+}
+
+.frase-rotativa {
+    font-size: 13px;
+    color: #5C7080;
+    height: 18px;
+    margin: 0 0 40px;
+    opacity: 0;
+    transition: opacity 0.5s ease;
+}
+
+.frase-rotativa.visible {
+    opacity: 1;
 }
 
 #comenzar {
-    background: #18B4F0;
-    color: #040910;
+    background: #fff;
+    color: #05070C;
 
     border: none;
     padding: 15px 38px;
     border-radius: 999px;
 
-    font-size: 15px;
-    font-weight: 500;
-    font-family: 'Inter', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    font-family: 'Sora', sans-serif;
 
     cursor: pointer;
 }
@@ -135,13 +164,24 @@ body {
     cursor: default;
 }
 
-/* ----------------------------------------
-   Elementos que reaccionan al volumen de voz
-   (el brillo lo controla particles.js en cada frame)
-   ---------------------------------------- */
+/* Modo "atráeme": cuando nadie interactúa por un rato */
 
-.reactivo-audio {
-    transition: text-shadow 0.15s ease;
+.atraeme {
+    font-size: 14px;
+    color: #5AC8FF;
+    margin-top: 28px;
+    opacity: 0;
+    transition: opacity 0.6s ease;
+}
+
+#pantalla-inicio.atrayendo .atraeme {
+    opacity: 1;
+    animation: pulsarInvitacion 1.8s ease-in-out infinite;
+}
+
+@keyframes pulsarInvitacion {
+    0%, 100% { transform: scale(1); opacity: 0.7; }
+    50% { transform: scale(1.05); opacity: 1; }
 }
 
 /* ----------------------------------------
@@ -157,37 +197,33 @@ body {
 }
 
 .marca-chica {
-    font-family: 'Montserrat', sans-serif;
-    font-weight: 800;
-    font-size: 22px;
-    letter-spacing: 3px;
-    color: #18B4F0;
-    margin: 0 0 20px;
+    font-weight: 700;
+    font-size: 20px;
+    letter-spacing: 1px;
+    color: #fff;
+    margin: 0 0 24px;
+    transition: text-shadow 0.15s ease;
 }
-
-/* Puntos de progreso (aprox. 1 por pregunta, hasta 10) */
 
 .progreso {
     display: flex;
     justify-content: center;
     gap: 6px;
-    margin-bottom: 28px;
-    min-height: 8px;
+    margin-bottom: 24px;
+    min-height: 3px;
 }
 
 .progreso .punto {
-    width: 7px;
-    height: 7px;
-    border-radius: 50%;
-    background: rgba(24, 180, 240, 0.18);
+    width: 20px;
+    height: 3px;
+    border-radius: 2px;
+    background: rgba(255, 255, 255, 0.12);
     transition: background 0.3s ease;
 }
 
 .progreso .punto.completado {
-    background: #18B4F0;
+    background: #fff;
 }
-
-/* Estado (escuchando / hablando / etc.) */
 
 #estado {
     display: flex;
@@ -195,22 +231,21 @@ body {
     justify-content: center;
     gap: 8px;
 
-    font-size: 14px;
-    color: #C7E4F5;
-    min-height: 20px;
-    margin-bottom: 28px;
+    font-size: 13px;
+    color: #94A3B8;
+    min-height: 18px;
 }
 
 .punto-estado {
-    width: 7px;
-    height: 7px;
+    width: 6px;
+    height: 6px;
     border-radius: 50%;
-    background: #6E8494;
+    background: #5C7080;
     flex-shrink: 0;
 }
 
 #estado.escuchando .punto-estado {
-    background: #18B4F0;
+    background: #5AC8FF;
     animation: latido 1.4s ease-in-out infinite;
 }
 
@@ -222,4 +257,165 @@ body {
 @keyframes latido {
     0%, 100% { opacity: 0.4; transform: scale(0.85); }
     50% { opacity: 1; transform: scale(1.15); }
+}
+
+/* ----------------------------------------
+   Cronómetro (solo durante la entrevista)
+   ---------------------------------------- */
+
+#cronometro {
+    display: none;
+
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    z-index: 3;
+
+    font-size: 12px;
+    color: #5C7080;
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 1px;
+}
+
+#pantalla-entrevista.activa ~ #cronometro {
+    display: block;
+}
+
+/* ----------------------------------------
+   Chat en vivo (solo durante la entrevista)
+   ---------------------------------------- */
+
+.chat-card {
+    display: none;
+
+    position: fixed;
+    bottom: 24px;
+    left: 24px;
+    z-index: 3;
+
+    max-width: 280px;
+
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 14px 16px;
+
+    text-align: left;
+
+    opacity: 0;
+    transform: translateY(8px);
+    transition: opacity 0.4s ease, transform 0.4s ease;
+}
+
+#pantalla-entrevista.activa ~ .chat-card {
+    display: block;
+}
+
+.chat-card.visible {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.chat-card .quien {
+    font-size: 10px;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    color: #5AC8FF;
+    margin: 0 0 4px;
+}
+
+.chat-card .texto {
+    font-size: 13px;
+    color: #E3EAF2;
+    margin: 0;
+    line-height: 1.4;
+}
+
+/* ----------------------------------------
+   Código QR (solo durante la entrevista)
+   ---------------------------------------- */
+
+.qr-card {
+    display: none;
+
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 3;
+
+    background: rgba(255, 255, 255, 0.06);
+    backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px;
+    padding: 12px;
+
+    text-align: center;
+}
+
+#pantalla-entrevista.activa ~ .qr-card {
+    display: block;
+}
+
+.qr-card img {
+    width: 76px;
+    height: 76px;
+    display: block;
+    border-radius: 6px;
+}
+
+.qr-card p {
+    font-size: 9px;
+    color: #94A3B8;
+    margin: 6px 0 0;
+    letter-spacing: 0.5px;
+}
+
+/* ----------------------------------------
+   Botón de finalizar (solo durante la entrevista)
+   ---------------------------------------- */
+
+.finalizar {
+    display: none;
+
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+
+    background: transparent;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    color: #94A3B8;
+    padding: 9px 20px;
+    border-radius: 999px;
+
+    font-size: 12px;
+    font-family: 'Sora', sans-serif;
+    cursor: pointer;
+}
+
+#pantalla-entrevista.activa ~ .finalizar {
+    display: block;
+}
+
+.finalizar:hover {
+    border-color: rgba(255, 255, 255, 0.4);
+    color: #F5F8FC;
+}
+
+/* ----------------------------------------
+   Crédito de autoría (siempre visible)
+   ---------------------------------------- */
+
+.credito {
+    position: fixed;
+    top: 20px;
+    left: 24px;
+    z-index: 3;
+
+    font-size: 11px;
+    color: #4A5A6B;
+    letter-spacing: 0.5px;
+    margin: 0;
 }
