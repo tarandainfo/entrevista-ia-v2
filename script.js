@@ -216,6 +216,12 @@ let procesadorMicrofono = null;
 let analizadorAudio = null;
 let entrevistaFinalizando = false;
 
+// Transcripción completa de la entrevista (para redactar la
+// nota al final) — distinta del chat en pantalla, que solo
+// muestra la última frase.
+let transcripcionCompleta = "";
+let ultimoHablanteTranscripcionCompleta = null;
+
 // Cursor de tiempo para programar los buffers de audio
 // uno pegado al otro, sin depender de "onended" (eso es
 // lo que generaba cortes/chasquidos).
@@ -493,6 +499,86 @@ function actualizarChat(hablante, texto) {
 }
 
 
+function agregarATranscripcionCompleta(hablante, texto) {
+
+    const etiqueta = hablante === "usuario" ? "ENTREVISTADO: " : "LEDA: ";
+
+    if (ultimoHablanteTranscripcionCompleta !== hablante) {
+
+        if (transcripcionCompleta.length > 0) {
+            transcripcionCompleta += "\n";
+        }
+
+        transcripcionCompleta += etiqueta;
+        ultimoHablanteTranscripcionCompleta = hablante;
+    }
+
+    transcripcionCompleta += texto;
+}
+
+
+// ----------------------------------------
+// NOTA PERIODÍSTICA (al finalizar la entrevista)
+// ----------------------------------------
+
+async function generarYDescargarNota() {
+
+    // Si la charla fue muy corta, no vale la pena generar
+    // una nota (evita gastar una llamada a la API en vacío).
+    if (!transcripcionCompleta || transcripcionCompleta.trim().length < 50) {
+        return;
+    }
+
+    const transcripcionParaEnviar = transcripcionCompleta;
+
+    try {
+
+        const respuesta = await fetch("/generar-nota", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ transcripcion: transcripcionParaEnviar })
+        });
+
+        if (!respuesta.ok) {
+            throw new Error("El servidor respondió con error al generar la nota.");
+        }
+
+        const datos = await respuesta.json();
+
+        if (!datos.articulo) {
+            throw new Error("La respuesta no incluyó el texto de la nota.");
+        }
+
+        descargarNotaComoArchivo(datos.articulo);
+
+    } catch (error) {
+        // No interrumpimos el flujo de la app por esto — la
+        // entrevista ya terminó bien, esto es un extra. Solo
+        // lo dejamos registrado en consola para diagnosticar.
+        console.error("No se pudo generar/descargar la nota:", error);
+    }
+}
+
+
+function descargarNotaComoArchivo(texto) {
+
+    const blob = new Blob([texto], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+
+    const fecha = new Date().toISOString().slice(0, 10);
+
+    const enlace = document.createElement("a");
+    enlace.href = url;
+    enlace.download = "nota-leda-" + fecha + "-" + Date.now() + ".txt";
+
+    document.body.appendChild(enlace);
+    enlace.click();
+    document.body.removeChild(enlace);
+
+    URL.revokeObjectURL(url);
+}
+
+
 // ----------------------------------------
 // MATIZ DE FONDO SEGÚN EL TEMA (aproximado)
 // ----------------------------------------
@@ -616,6 +702,8 @@ function finalizarEntrevista() {
 
     volverAPantallaInicio();
 
+    generarYDescargarNota();
+
     websocket = null;
     audioContext = null;
     microphoneStream = null;
@@ -627,6 +715,9 @@ function finalizarEntrevista() {
     reiniciarProgreso();
     chatCard.classList.remove("visible");
     hablanteActualChat = null;
+
+    transcripcionCompleta = "";
+    ultimoHablanteTranscripcionCompleta = null;
 
     botonComenzar.disabled = false;
 
@@ -792,10 +883,12 @@ function procesarMensaje(mensaje) {
 
     if (contenido.inputTranscription && contenido.inputTranscription.text) {
         actualizarChat("usuario", contenido.inputTranscription.text);
+        agregarATranscripcionCompleta("usuario", contenido.inputTranscription.text);
     }
 
     if (contenido.outputTranscription && contenido.outputTranscription.text) {
         actualizarChat("ia", contenido.outputTranscription.text);
+        agregarATranscripcionCompleta("ia", contenido.outputTranscription.text);
     }
 
     if (contenido.turnComplete) {
