@@ -249,6 +249,12 @@ const botonFinalizar = document.getElementById("finalizar");
 const TOTAL_PREGUNTAS = 10;
 let contadorTurnosIA = 0;
 
+// Aproximación de en qué turno de la IA se entrega el cierre:
+// 2 turnos iniciales (saludo+nombre, pregunta del tema) + 10
+// preguntas + 1 turno de cierre.
+const TURNOS_HASTA_CIERRE = TOTAL_PREGUNTAS + 3;
+let cierreEntregado = false;
+
 botonComenzar.addEventListener("click", iniciarEntrevista);
 botonFinalizar.addEventListener("click", finalizarEntrevista);
 
@@ -540,7 +546,19 @@ async function generarYDescargarNota() {
         });
 
         if (!respuesta.ok) {
-            throw new Error("El servidor respondió con error al generar la nota.");
+
+            let detalle = "";
+
+            try {
+                const cuerpoError = await respuesta.json();
+                detalle = cuerpoError.detalle || cuerpoError.error || "";
+            } catch (errorAlParsear) {
+                // La respuesta de error no era JSON, seguimos sin detalle.
+            }
+
+            throw new Error(
+                "El servidor respondió con error al generar la nota. " + detalle
+            );
         }
 
         const datos = await respuesta.json();
@@ -718,6 +736,7 @@ function finalizarEntrevista() {
 
     transcripcionCompleta = "";
     ultimoHablanteTranscripcionCompleta = null;
+    cierreEntregado = false;
 
     botonComenzar.disabled = false;
 
@@ -882,8 +901,17 @@ function procesarMensaje(mensaje) {
     }
 
     if (contenido.inputTranscription && contenido.inputTranscription.text) {
+
         actualizarChat("usuario", contenido.inputTranscription.text);
         agregarATranscripcionCompleta("usuario", contenido.inputTranscription.text);
+
+        // Si LEDA ya entregó su cierre y el entrevistado
+        // responde después (despidiéndose, agradeciendo, o
+        // lo que sea), damos por terminada la entrevista.
+        if (cierreEntregado) {
+            cierreEntregado = false;
+            setTimeout(finalizarEntrevista, 2500);
+        }
     }
 
     if (contenido.outputTranscription && contenido.outputTranscription.text) {
@@ -897,6 +925,10 @@ function procesarMensaje(mensaje) {
 
         contadorTurnosIA++;
         actualizarProgreso();
+
+        if (contadorTurnosIA >= TURNOS_HASTA_CIERRE) {
+            cierreEntregado = true;
+        }
     }
 }
 
