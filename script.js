@@ -700,7 +700,12 @@ async function iniciarEntrevista() {
 
         console.error("Error al iniciar la entrevista:", error);
         actualizarEstado("Error: " + error.message, null);
-        botonComenzar.disabled = false;
+
+        // Antes esto dejaba a la persona trabada en la pantalla
+        // de entrevista sin ninguna salida obvia. Ahora, después
+        // de un momento para que se alcance a leer el error,
+        // limpiamos todo y volvemos solos al inicio.
+        setTimeout(finalizarEntrevista, 3000);
     }
 }
 
@@ -757,6 +762,17 @@ function finalizarEntrevista() {
     ultimoHablanteTranscripcionCompleta = null;
     cierreEntregado = false;
 
+    handleReanudacion = null;
+    esReconexion = false;
+    reconectando = false;
+
+    // Antes esto se quedaba con el matiz de la entrevista
+    // anterior (por ejemplo violeta si habían hablado de arte).
+    // Lo volvemos al celeste base para la próxima persona.
+    if (window.FondoMalla) {
+        window.FondoMalla.setHueTema(205);
+    }
+
     botonComenzar.disabled = false;
 
     setTimeout(() => {
@@ -769,18 +785,28 @@ function finalizarEntrevista() {
 // CONEXIÓN CON GEMINI LIVE
 // ----------------------------------------
 
-function conectarWebSocket(token) {
+let handleReanudacion = null;
+let esReconexion = false;
+let reconectando = false;
+
+function conectarWebSocket(token, handleParaReanudar) {
 
     const url =
         "wss://generativelanguage.googleapis.com/ws/" +
         "google.ai.generativelanguage.v1alpha.GenerativeService." +
         "BidiGenerateContentConstrained?access_token=" + token;
 
+    esReconexion = !!handleParaReanudar;
+
     websocket = new WebSocket(url);
 
     websocket.addEventListener("open", () => {
 
-        console.log("WebSocket abierto, enviando setup...");
+        console.log(
+            esReconexion
+                ? "WebSocket reabierto, retomando sesión anterior..."
+                : "WebSocket abierto, enviando setup..."
+        );
 
         websocket.send(JSON.stringify({
             setup: {
@@ -806,6 +832,14 @@ function conectarWebSocket(token) {
                 systemInstruction: {
                     parts: [{ text: SYSTEM_PROMPT }]
                 },
+
+                // Si tenemos un handle de una sesión anterior
+                // (por un corte inesperado), lo mandamos para
+                // retomar la conversación en el mismo punto en
+                // vez de arrancar una entrevista nueva.
+                sessionResumption: handleParaReanudar
+                    ? { handle: handleParaReanudar }
+                    : {},
 
                 realtimeInputConfig: {
                     automaticActivityDetection: {
@@ -850,8 +884,26 @@ function conectarWebSocket(token) {
     websocket.addEventListener("close", (evento) => {
 
         console.log("WebSocket cerrado:", evento.code, evento.reason);
-        actualizarEstado("Conversación finalizada.", null);
 
+        // Si la entrevista ya había llegado a su cierre, o la
+        // estamos finalizando nosotros a propósito (botón de
+        // finalizar, error de arranque), no reconectamos.
+        if (entrevistaFinalizando || cierreEntregado) {
+            actualizarEstado("Conversación finalizada.", null);
+            setTimeout(finalizarEntrevista, 2000);
+            return;
+        }
+
+        // Corte inesperado en medio de la entrevista: si
+        // tenemos un handle de reanudación, intentamos
+        // reconectar solos, sin que la persona tenga que
+        // volver a apretar nada.
+        if (handleReanudacion && !reconectando) {
+            intentarReconexion();
+            return;
+        }
+
+        actualizarEstado("Conversación finalizada.", null);
         setTimeout(finalizarEntrevista, 2000);
     });
 
@@ -865,26 +917,68 @@ function conectarWebSocket(token) {
 }
 
 
+async function intentarReconexion() {
+
+    reconectando = true;
+    actualizarEstado("Reconectando...", null);
+
+    try {
+
+        const respuesta = await fetch("/token");
+
+        if (!respuesta.ok) {
+            throw new Error("No se pudo obtener un token nuevo para reconectar.");
+        }
+
+        const datos = await respuesta.json();
+
+        if (!datos.token) {
+            throw new Error("El token de reconexión vino vacío.");
+        }
+
+        conectarWebSocket(datos.token, handleReanudacion);
+
+    } catch (error) {
+
+        console.error("No se pudo reconectar:", error);
+        actualizarEstado("Se perdió la conexión con la IA.", null);
+        setTimeout(finalizarEntrevista, 2000);
+
+    } finally {
+        reconectando = false;
+    }
+}
+
+
 function procesarMensaje(mensaje) {
+
+    if (mensaje.sessionResumptionUpdate && mensaje.sessionResumptionUpdate.newHandle) {
+        handleReanudacion = mensaje.sessionResumptionUpdate.newHandle;
+    }
 
     if (mensaje.setupComplete) {
 
         actualizarEstado("Escuchando...", "escuchando");
 
-        // Le pedimos que arranque ella con su saludo/
-        // presentación, en vez de esperar a que el usuario
-        // hable primero.
-        websocket.send(JSON.stringify({
-            clientContent: {
-                turns: [{
-                    role: "user",
-                    parts: [{
-                        text: "Iniciá la entrevista con tu saludo de presentación."
-                    }]
-                }],
-                turnComplete: true
-            }
-        }));
+        // Si es una reconexión (retomando una sesión cortada),
+        // no le pedimos que se presente de nuevo — ya estábamos
+        // en medio de la entrevista.
+        if (!esReconexion) {
+
+            websocket.send(JSON.stringify({
+                clientContent: {
+                    turns: [{
+                        role: "user",
+                        parts: [{
+                            text: "Iniciá la entrevista con tu saludo de presentación."
+                        }]
+                    }],
+                    turnComplete: true
+                }
+            }));
+        }
+
+        esReconexion = false;
 
         return;
     }
