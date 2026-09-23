@@ -874,8 +874,10 @@ function conectarWebSocket(token, handleParaReanudar) {
         }
 
         // Para diagnosticar rápido si algo del protocolo
-        // no coincide con lo esperado.
-        console.log("Mensaje de Gemini:", mensaje);
+        // no coincide con lo esperado. Usamos JSON.stringify
+        // para que se vea el contenido completo como texto,
+        // en vez de un objeto colapsado que hay que ir abriendo.
+        console.log("Mensaje de Gemini:", JSON.stringify(mensaje));
 
         procesarMensaje(mensaje);
     });
