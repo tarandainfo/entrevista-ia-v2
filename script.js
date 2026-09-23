@@ -51,6 +51,16 @@ específicamente hacia ese tema — mostrate informada e interesada
 en profundizar sobre ese tema puntual, aunque no tengas datos en
 tiempo real de noticias actuales.
 
+MUY IMPORTANTE sobre el ritmo de la conversación: hacé UNA sola
+cosa por intervención (una pregunta, o un solo pedido de dato) y
+esperá siempre a que la persona responda antes de seguir con lo
+próximo. Nunca juntes varios pasos en un mismo turno — por
+ejemplo, no pidas nombre, cargo, empresa y tema todos juntos en
+una sola intervención tuya larga. Cada intervención tuya debería
+poder decirse en pocos segundos (una o dos oraciones cortas como
+mucho). Esto es central para que la charla se sienta como una
+conversación real, no como un monólogo.
+
 Tené siempre presente que la entrevista se desarrolla en
 Paraguay (en Exponegocios) y que la persona entrevistada forma
 parte del ámbito empresarial paraguayo. Encuadrá tus preguntas y
@@ -966,17 +976,30 @@ function procesarMensaje(mensaje) {
         // en medio de la entrevista.
         if (!esReconexion) {
 
-            websocket.send(JSON.stringify({
-                clientContent: {
-                    turns: [{
-                        role: "user",
-                        parts: [{
-                            text: "Iniciá la entrevista con tu saludo de presentación."
-                        }]
-                    }],
-                    turnComplete: true
+            // Pequeño margen antes de mandar el disparador: si
+            // el mensaje de arranque llega justo cuando también
+            // está llegando audio real del micrófono (ruido de
+            // fondo, por ejemplo), puede que Gemini lo ignore o
+            // se quede esperando. Este margen le da un instante
+            // de aire al canal antes de inyectar el texto.
+            setTimeout(() => {
+
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+
+                    websocket.send(JSON.stringify({
+                        clientContent: {
+                            turns: [{
+                                role: "user",
+                                parts: [{
+                                    text: "Iniciá la entrevista con tu saludo de presentación."
+                                }]
+                            }],
+                            turnComplete: true
+                        }
+                    }));
                 }
-            }));
+
+            }, 300);
         }
 
         esReconexion = false;
