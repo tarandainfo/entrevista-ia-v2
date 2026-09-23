@@ -792,7 +792,7 @@ function conectarWebSocket(token) {
                     automaticActivityDetection: {
                         startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
                         prefixPaddingMs: 250,
-                        silenceDurationMs: 450
+                        silenceDurationMs: 350
                     }
                 },
 

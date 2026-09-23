@@ -50,19 +50,6 @@ class MicProcessor extends AudioWorkletProcessor {
                 this.targetSampleRate
             );
 
-            // Portón de silencio: si el pedacito es
-            // prácticamente silencio (o un murmullo de fondo
-            // muy bajo), ni lo mandamos. Esto NO separa dos
-            // personas hablando a la vez cerca del micrófono
-            // — eso requiere un micrófono direccional, no hay
-            // forma de resolverlo por software — pero evita
-            // que un ruido de fondo constante y bajo (aire
-            // acondicionado, murmullo lejano) se cuele en los
-            // huecos de silencio real entre frases.
-            if (this._esSilencio(juntado)) {
-                return true;
-            }
-
             this.port.postMessage(pcm16, [pcm16]);
         }
 
@@ -112,24 +99,6 @@ class MicProcessor extends AudioWorkletProcessor {
         }
 
         return resultado.buffer;
-    }
-
-    _esSilencio(buffer) {
-
-        let sumaCuadrados = 0;
-
-        for (let i = 0; i < buffer.length; i++) {
-            sumaCuadrados += buffer[i] * buffer[i];
-        }
-
-        const rms = Math.sqrt(sumaCuadrados / buffer.length);
-
-        // Umbral conservador: solo filtra silencio/ruido muy
-        // bajo, para no arriesgarnos a cortar el inicio de una
-        // voz suave. Se puede ajustar si hace falta.
-        const UMBRAL_SILENCIO = 0.008;
-
-        return rms < UMBRAL_SILENCIO;
     }
 }
 

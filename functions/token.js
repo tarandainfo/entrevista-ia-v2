@@ -248,7 +248,7 @@ export async function onRequestGet(context) {
                             automaticActivityDetection: {
                                 startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
                                 prefixPaddingMs: 250,
-                                silenceDurationMs: 450
+                                silenceDurationMs: 350
                             }
                         },
 
