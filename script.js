@@ -775,6 +775,7 @@ function finalizarEntrevista() {
     handleReanudacion = null;
     esReconexion = false;
     reconectando = false;
+    permitirEnvioMicrofono = false;
 
     // Antes esto se quedaba con el matiz de la entrevista
     // anterior (por ejemplo violeta si habían hablado de arte).
@@ -797,6 +798,7 @@ function finalizarEntrevista() {
 
 let handleReanudacion = null;
 let esReconexion = false;
+let permitirEnvioMicrofono = false;
 let reconectando = false;
 
 function conectarWebSocket(token, handleParaReanudar) {
@@ -807,6 +809,13 @@ function conectarWebSocket(token, handleParaReanudar) {
         "BidiGenerateContentConstrained?access_token=" + token;
 
     esReconexion = !!handleParaReanudar;
+
+    // En una reconexión ya veníamos en medio de la charla, no
+    // hay ningún disparador de saludo con el que competir — el
+    // micrófono puede mandar audio de entrada, sin esperar.
+    if (esReconexion) {
+        permitirEnvioMicrofono = true;
+    }
 
     websocket = new WebSocket(url);
 
@@ -1029,6 +1038,12 @@ function procesarMensaje(mensaje) {
 
         actualizarEstado("La IA está hablando...", "hablando");
 
+        // Ya arrancó a hablar de verdad — a partir de acá no
+        // hay más riesgo de que el audio del micrófono compita
+        // con el disparador de saludo, así que habilitamos el
+        // envío (si no estaba habilitado ya).
+        permitirEnvioMicrofono = true;
+
         for (const parte of contenido.modelTurn.parts) {
 
             if (parte.inlineData && parte.inlineData.data) {
@@ -1108,6 +1123,16 @@ async function iniciarMicrofono() {
     procesadorMicrofono.port.onmessage = (evento) => {
 
         if (!websocket || websocket.readyState !== WebSocket.OPEN) {
+            return;
+        }
+
+        // No mandamos audio del micrófono hasta que LEDA haya
+        // arrancado a hablar de verdad. Si mandamos audio real
+        // (ruido de fondo, lo que sea) mientras todavía estamos
+        // esperando que arranque sola, el servidor puede tratar
+        // eso como "el usuario ya está hablando" y quedarse
+        // esperando en vez de responder al disparador de saludo.
+        if (!permitirEnvioMicrofono) {
             return;
         }
 
