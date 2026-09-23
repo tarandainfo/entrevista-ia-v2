@@ -808,51 +808,50 @@ function conectarWebSocket(token, handleParaReanudar) {
                 : "WebSocket abierto, enviando setup..."
         );
 
-        websocket.send(JSON.stringify({
-            setup: {
-                model: MODELO,
+        const configuracionSetup = {
+            model: MODELO,
 
-                generationConfig: {
-                    thinkingConfig: {
-                        thinkingBudget: 0
+            generationConfig: {
+                thinkingConfig: {
+                    thinkingBudget: 0
+                },
+
+                responseModalities: ["AUDIO"],
+
+                speechConfig: {
+                    voiceConfig: {
+                        prebuiltVoiceConfig: {
+                            voiceName: VOZ
+                        }
                     },
+                    languageCode: "es-419"
+                }
+            },
 
-                    responseModalities: ["AUDIO"],
+            systemInstruction: {
+                parts: [{ text: SYSTEM_PROMPT }]
+            },
 
-                    speechConfig: {
-                        voiceConfig: {
-                            prebuiltVoiceConfig: {
-                                voiceName: VOZ
-                            }
-                        },
-                        languageCode: "es-419"
-                    }
-                },
+            realtimeInputConfig: {
+                automaticActivityDetection: {
+                    startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
+                    prefixPaddingMs: 250,
+                    silenceDurationMs: 350
+                }
+            },
 
-                systemInstruction: {
-                    parts: [{ text: SYSTEM_PROMPT }]
-                },
+            inputAudioTranscription: {},
+            outputAudioTranscription: {}
+        };
 
-                // Si tenemos un handle de una sesión anterior
-                // (por un corte inesperado), lo mandamos para
-                // retomar la conversación en el mismo punto en
-                // vez de arrancar una entrevista nueva.
-                sessionResumption: handleParaReanudar
-                    ? { handle: handleParaReanudar }
-                    : {},
+        // Solo mandamos sessionResumption cuando realmente
+        // estamos retomando una sesión anterior. En una
+        // conexión normal, ni lo incluimos.
+        if (handleParaReanudar) {
+            configuracionSetup.sessionResumption = { handle: handleParaReanudar };
+        }
 
-                realtimeInputConfig: {
-                    automaticActivityDetection: {
-                        startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
-                        prefixPaddingMs: 250,
-                        silenceDurationMs: 350
-                    }
-                },
-
-                inputAudioTranscription: {},
-                outputAudioTranscription: {}
-            }
-        }));
+        websocket.send(JSON.stringify({ setup: configuracionSetup }));
     });
 
     websocket.addEventListener("message", async (evento) => {
