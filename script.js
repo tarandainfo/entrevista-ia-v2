@@ -230,7 +230,7 @@ forma general, amable y breve, y llevá la charla de vuelta a la
 entrevista.
 `.trim();
 
-const MODELO = "models/gemini-3.1-flash-live-preview";
+const MODELO = "models/gemini-3.8-live";
 const VOZ = "Leda";
 
 
