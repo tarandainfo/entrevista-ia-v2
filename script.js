@@ -230,7 +230,7 @@ forma general, amable y breve, y llevá la charla de vuelta a la
 entrevista.
 `.trim();
 
-const MODELO = "models/gemini-3.8-live";
+const MODELO = "models/gemini-3.1-flash-live-preview";
 const VOZ = "Leda";
 
 
@@ -838,6 +838,11 @@ function conectarWebSocket(token, handleParaReanudar) {
                 responseModalities: ["AUDIO"],
 
                 speechConfig: {
+                    voiceConfig: {
+                        prebuiltVoiceConfig: {
+                            voiceName: VOZ
+                        }
+                    },
                     languageCode: "es-419"
                 }
             },
@@ -976,10 +981,40 @@ function procesarMensaje(mensaje) {
 
         actualizarEstado("Escuchando...", "escuchando");
 
-        // Si es una reconexión (retomando una sesión cortada),
-        // no le pedimos que se presente de nuevo — ya estábamos
-        // en medio de la entrevista.
-        if (!esReconexion) {
+        if (esReconexion) {
+
+            // Antes acá no mandábamos nada, asumiendo que el
+            // handle de reanudación alcanzaba para que LEDA
+            // recordara todo. En la práctica, a veces igual se
+            // volvía a presentar de cero. Le mandamos un
+            // recordatorio explícito para que no reinicie la
+            // entrevista.
+            setTimeout(() => {
+
+                if (websocket && websocket.readyState === WebSocket.OPEN) {
+
+                    websocket.send(JSON.stringify({
+                        clientContent: {
+                            turns: [{
+                                role: "user",
+                                parts: [{
+                                    text: "Seguimos con la misma entrevista de antes " +
+                                        "(se cortó la conexión un instante). No te " +
+                                        "vuelvas a presentar ni preguntes de nuevo el " +
+                                        "nombre, el cargo, la empresa o el tema — " +
+                                        "continuá naturalmente la conversación justo " +
+                                        "donde habíamos quedado, con la siguiente " +
+                                        "pregunta que corresponda."
+                                }]
+                            }],
+                            turnComplete: true
+                        }
+                    }));
+                }
+
+            }, 300);
+
+        } else {
 
             // Pequeño margen antes de mandar el disparador: si
             // el mensaje de arranque llega justo cuando también

@@ -250,13 +250,18 @@ export async function onRequestGet(context) {
                 expireTime,
 
                 liveConnectConstraints: {
-                    model: "gemini-3.8-live",
+                    model: "gemini-3.1-flash-live-preview",
 
                     config: {
                         sessionResumption: {},
                         responseModalities: ["AUDIO"],
 
                         speechConfig: {
+                            voiceConfig: {
+                                prebuiltVoiceConfig: {
+                                    voiceName: "Leda"
+                                }
+                            },
                             languageCode: "es-419"
                         },
 
