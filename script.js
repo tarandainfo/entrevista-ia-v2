@@ -854,8 +854,9 @@ function conectarWebSocket(token, handleParaReanudar) {
             realtimeInputConfig: {
                 automaticActivityDetection: {
                     startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
+                    endOfSpeechSensitivity: "END_SENSITIVITY_HIGH",
                     prefixPaddingMs: 250,
-                    silenceDurationMs: 350
+                    silenceDurationMs: 250
                 }
             },
 
@@ -1222,7 +1223,7 @@ function programarReproduccion(buffer) {
     // vez de arrancar pegado a "ahora". Así absorbemos
     // pequeños retrasos de red sin que se note como corte.
     if (nextStartTime < ahora) {
-        nextStartTime = ahora + 0.3;
+        nextStartTime = ahora + 0.15;
     }
 
     const source = audioContext.createBufferSource();
