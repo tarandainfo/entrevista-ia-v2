@@ -831,10 +831,6 @@ function conectarWebSocket(token, handleParaReanudar) {
             model: MODELO,
 
             generationConfig: {
-                thinkingConfig: {
-                    thinkingBudget: 0
-                },
-
                 responseModalities: ["AUDIO"],
 
                 speechConfig: {

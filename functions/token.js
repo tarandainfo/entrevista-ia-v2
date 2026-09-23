@@ -265,10 +265,6 @@ export async function onRequestGet(context) {
                             languageCode: "es-419"
                         },
 
-                        thinkingConfig: {
-                            thinkingBudget: 0
-                        },
-
                         systemInstruction: {
                             parts: [{ text: SYSTEM_PROMPT }]
                         },
