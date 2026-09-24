@@ -140,26 +140,48 @@ body {
     opacity: 1;
 }
 
-#comenzar {
+.botones-modo {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    width: 100%;
+    max-width: 320px;
+}
+
+.boton-modo {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+
     background: #fff;
     color: #05070C;
 
     border: none;
-    padding: 15px 38px;
-    border-radius: 999px;
+    padding: 14px 30px;
+    border-radius: 20px;
 
-    font-size: 14px;
-    font-weight: 700;
     font-family: 'Sora', sans-serif;
-
     cursor: pointer;
 }
 
-#comenzar:hover {
+.boton-modo-titulo {
+    font-size: 15px;
+    font-weight: 700;
+}
+
+.boton-modo-desc {
+    font-size: 11px;
+    font-weight: 400;
+    opacity: 0.65;
+}
+
+.boton-modo:hover {
     opacity: 0.9;
 }
 
-#comenzar:disabled {
+.boton-modo:disabled {
     opacity: 0.4;
     cursor: default;
 }
