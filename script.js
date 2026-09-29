@@ -591,7 +591,7 @@ function descargarNotaComoArchivo(texto) {
 // de la marca.
 
 const TEMAS = [
-    { hue: 175, palabras: ["agro", "ganaderia", "ganadería", "campo", "agricultura", "cultivo", "soja", "ganado"] },
+    { hue: 190, palabras: ["agro", "ganaderia", "ganadería", "campo", "agricultura", "cultivo", "soja", "ganado"] },
     { hue: 265, palabras: ["arte", "cultura", "musica", "música", "pintura", "cine", "teatro"] },
     { hue: 195, palabras: ["deporte", "futbol", "fútbol", "deportivo", "atleta", "liga"] },
     { hue: 185, palabras: ["salud", "medico", "médico", "clinica", "clínica", "hospital", "medicina"] },

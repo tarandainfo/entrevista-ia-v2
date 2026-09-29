@@ -41,7 +41,7 @@
     const blobs = [
         { xF: 0.25, yF: 0.3, rF: 0.55, corrimiento: 0, vx: 0.00011, vy: 0.00009 },
         { xF: 0.75, yF: 0.65, rF: 0.6, corrimiento: 60, vx: -0.00009, vy: 0.00012 },
-        { xF: 0.5, yF: 0.85, rF: 0.5, corrimiento: -40, vx: 0.00013, vy: -0.0001 },
+        { xF: 0.5, yF: 0.85, rF: 0.5, corrimiento: 100, vx: 0.00013, vy: -0.0001 },
         { xF: 0.15, yF: 0.75, rF: 0.4, corrimiento: 20, vx: 0.0001, vy: -0.00008 }
     ];
 
@@ -139,6 +139,14 @@
         // El tono base se desliza suavemente hacia el tema
         // detectado, en vez de saltar de golpe.
         hueActual += (hueObjetivo - hueActual) * 0.01;
+
+        // Esta misma variable la usan los botones de modo (el
+        // anillo de vidrio líquido) para seguir siempre el
+        // mismo matiz que tiene el fondo en ese momento.
+        document.documentElement.style.setProperty(
+            "--matiz-actual",
+            hueActual.toFixed(1)
+        );
 
         ctx.fillStyle = "#05070C";
         ctx.fillRect(0, 0, ancho, alto);
