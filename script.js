@@ -53,7 +53,7 @@ Pregunta ${preguntaNumero}: avisá que es la última antes de
 hacerla.
 
 CIERRE: agradecé, avisá que terminó, invitá a selfie + mencionar
-@infonegociospy ("arroba infonegocios, pe, i griega", nunca en
+@infonegociospy ("arroba infonegocios pe igriega", nunca en
 inglés), su nombre, deseale disfrutar Exponegocios.
 `.trim();
 }
