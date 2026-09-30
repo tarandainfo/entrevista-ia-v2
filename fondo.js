@@ -40,6 +40,11 @@
 
     let animando = false;
 
+    // Se cachea una sola vez (en vez de hacer querySelectorAll
+    // en cada cuadro, 60 veces por segundo).
+    let elementosBrillo = null;
+    let contadorCuadros = 0;
+
     // Modo landing (pantalla de inicio, antes de arrancar una
     // entrevista): matiz multicolor amplio, moviéndose rápido
     // (Propuesta B). Al arrancar la entrevista pasa a false, y
@@ -201,26 +206,38 @@
             g.addColorStop(0, "hsla(" + hue + ", " + saturacionActual + "%, 60%, " + opacidad + ")");
             g.addColorStop(1, "hsla(" + hue + ", " + saturacionActual + "%, 60%, 0)");
 
+            // Pintamos solo el cuadrado que contiene al blob,
+            // no el canvas entero: más allá del radio el
+            // gradiente ya es transparente, así que pintar ahí
+            // es trabajo de más (esto es lo que más pesaba).
             ctx.fillStyle = g;
-            ctx.fillRect(0, 0, ancho, alto);
+            ctx.fillRect(cx - radio, cy - radio, radio * 2, radio * 2);
         }
 
         ctx.globalCompositeOperation = "source-over";
 
-        actualizarBrilloReactivo(intensidad, hueDeCuadro);
+        // El brillo del texto no necesita actualizarse en los
+        // 60 cuadros por segundo para verse fluido — cada 3
+        // alcanza, y ahorra recálculos de estilo en el DOM.
+        contadorCuadros++;
+        if (contadorCuadros % 3 === 0) {
+            actualizarBrilloReactivo(intensidad, hueDeCuadro);
+        }
     }
 
 
     function actualizarBrilloReactivo(nivel, hue) {
 
-        const elementos = document.querySelectorAll(".marca, .marca-chica");
+        if (!elementosBrillo) {
+            elementosBrillo = document.querySelectorAll(".marca, .marca-chica");
+        }
 
         const intensidadGlow = 14 + nivel * 46;
         const opacidad = 0.35 + nivel * 0.55;
 
         const sombra = "0 0 " + intensidadGlow + "px hsla(" + hue + ", " + saturacionActual + "%, 65%, " + opacidad + ")";
 
-        for (const el of elementos) {
+        for (const el of elementosBrillo) {
             el.style.textShadow = sombra;
         }
     }
