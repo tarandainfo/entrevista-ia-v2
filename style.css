@@ -326,6 +326,11 @@ body {
     animation: none;
 }
 
+#estado.procesando .punto-estado {
+    background: #F5A623;
+    animation: latido 0.8s ease-in-out infinite;
+}
+
 @keyframes latido {
     0%, 100% { opacity: 0.4; transform: scale(0.85); }
     50% { opacity: 1; transform: scale(1.15); }

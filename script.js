@@ -268,7 +268,7 @@ if (window.FondoMalla) {
 function actualizarEstado(texto, clase) {
 
     textoEstadoSpan.textContent = texto;
-    contenedorEstado.classList.remove("escuchando", "hablando");
+    contenedorEstado.classList.remove("escuchando", "hablando", "procesando");
 
     if (clase) {
         contenedorEstado.classList.add(clase);
@@ -627,6 +627,25 @@ const TEMAS = [
     { hue: 250, palabras: ["judicial", "politica", "política", "gobierno", "ley", "tribunal"] }
 ];
 
+const PALABRAS_DESPEDIDA = [
+    "chau", "chao", "adiós", "adios", "hasta luego",
+    "nos vemos", "hasta pronto", "hasta la próxima",
+    "hasta la proxima", "me despido", "bye",
+    "eso es todo", "eso sería todo", "eso seria todo",
+    "nada más", "nada mas", "listo, gracias", "listo gracias",
+    "muchas gracias, chau", "gracias, nos vemos"
+];
+
+function esDespedida(texto) {
+
+    const textoNormalizado = texto.toLowerCase();
+
+    return PALABRAS_DESPEDIDA.some((palabra) =>
+        textoNormalizado.includes(palabra)
+    );
+}
+
+
 function detectarTemaYAjustarColor(texto) {
 
     const textoNormalizado = texto.toLowerCase();
@@ -982,6 +1001,13 @@ function procesarMensaje(mensaje) {
         handleReanudacion = mensaje.sessionResumptionUpdate.newHandle;
     }
 
+    // El entrevistado dejó de hablar: a partir de acá, hasta
+    // que llegue el audio real de LEDA, lo que está pasando es
+    // que Gemini está generando la respuesta.
+    if (mensaje.voiceActivity && mensaje.voiceActivity.type === "ACTIVITY_END") {
+        actualizarEstado("Procesando respuesta...", "procesando");
+    }
+
     if (mensaje.setupComplete) {
 
         actualizarEstado("Escuchando...", "escuchando");
@@ -1093,10 +1119,12 @@ function procesarMensaje(mensaje) {
         actualizarChat("usuario", contenido.inputTranscription.text);
         agregarATranscripcionCompleta("usuario", contenido.inputTranscription.text);
 
-        // Si LEDA ya entregó su cierre y el entrevistado
-        // responde después (despidiéndose, agradeciendo, o
-        // lo que sea), damos por terminada la entrevista.
-        if (cierreEntregado) {
+        // Si LEDA ya entregó su cierre, esperamos a que el
+        // entrevistado realmente se despida (no cualquier
+        // respuesta) para recién ahí terminar. Si dice otra
+        // cosa, seguimos escuchando — puede que quiera agregar
+        // algo más antes de despedirse de verdad.
+        if (cierreEntregado && esDespedida(contenido.inputTranscription.text)) {
             cierreEntregado = false;
             setTimeout(finalizarEntrevista, 2500);
         }
