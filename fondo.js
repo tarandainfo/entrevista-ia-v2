@@ -140,14 +140,6 @@
         // detectado, en vez de saltar de golpe.
         hueActual += (hueObjetivo - hueActual) * 0.01;
 
-        // Esta misma variable la usan los botones de modo (el
-        // anillo de vidrio líquido) para seguir siempre el
-        // mismo matiz que tiene el fondo en ese momento.
-        document.documentElement.style.setProperty(
-            "--matiz-actual",
-            hueActual.toFixed(1)
-        );
-
         ctx.fillStyle = "#05070C";
         ctx.fillRect(0, 0, ancho, alto);
         ctx.globalCompositeOperation = "lighter";

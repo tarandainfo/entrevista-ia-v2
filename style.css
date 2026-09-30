@@ -140,26 +140,6 @@ body {
     opacity: 1;
 }
 
-/* Matiz compartido en vivo con el fondo (fondo.js lo actualiza
-   en cada cuadro de animación), usado por el anillo de los
-   botones de modo. @property permite que el cambio de valor
-   se anime suavemente en vez de saltar de golpe. */
-@property --matiz-actual {
-    syntax: '<number>';
-    inherits: true;
-    initial-value: 205;
-}
-
-@property --ang-anillo {
-    syntax: '<angle>';
-    inherits: false;
-    initial-value: 0deg;
-}
-
-:root {
-    --matiz-actual: 205;
-}
-
 .botones-modo {
     display: flex;
     flex-direction: column;
@@ -175,76 +155,56 @@ body {
     align-items: center;
     gap: 16px;
 
-    background: rgba(255, 255, 255, 0.02);
-    backdrop-filter: blur(6px);
-    -webkit-backdrop-filter: blur(6px);
+    background: rgba(255, 255, 255, 0.045);
+    backdrop-filter: blur(26px) saturate(220%) brightness(1.1);
+    -webkit-backdrop-filter: blur(26px) saturate(220%) brightness(1.1);
 
-    border: none;
+    border: 1px solid rgba(255, 255, 255, 0.13);
     border-radius: 26px;
     padding: 18px 22px;
 
-    isolation: isolate;
     cursor: pointer;
+    overflow: hidden;
     text-align: left;
 
     color: #F5F8FC;
     font-family: 'Sora', sans-serif;
 
-    /* Brillo interno: luz "entrando" por el borde de vidrio,
-       en el matiz que tenga el fondo en ese momento. */
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.35),
-        inset 0 0 24px -6px hsla(var(--matiz-actual), 85%, 65%, 0.45),
-        0 8px 20px -10px rgba(0, 0, 0, 0.5);
+    transition: border-color 0.25s ease, transform 0.2s ease;
+}
 
-    transform: scale(1);
-    transition:
-        transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1),
-        box-shadow 0.3s ease;
+/* El brillo que cruza lentamente el botón en loop, como luz
+   real moviéndose sobre un cristal. */
+.boton-modo::after {
+    content: "";
+    position: absolute;
+    top: -50%;
+    left: -150%;
+    width: 60%;
+    height: 200%;
+    background: linear-gradient(75deg,
+        transparent 30%,
+        rgba(255, 255, 255, 0.16) 48%,
+        rgba(255, 255, 255, 0.02) 55%,
+        transparent 70%);
+    animation: brillo-pasa 7s ease-in-out infinite;
+    pointer-events: none;
+}
+
+@keyframes brillo-pasa {
+    0%, 100% { transform: translateX(0); }
+    50% { transform: translateX(280%); }
 }
 
 .boton-modo:hover {
-    transform: scale(1.035) translateY(-3px);
-    box-shadow:
-        inset 0 1px 0 rgba(255, 255, 255, 0.45),
-        inset 0 0 30px -4px hsla(var(--matiz-actual), 85%, 65%, 0.6),
-        0 16px 32px -10px rgba(0, 0, 0, 0.55);
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.28);
 }
 
 .boton-modo:disabled {
     opacity: 0.4;
     cursor: default;
     transform: none;
-}
-
-/* El anillo: un borde de degradé cónico girando lento, con
-   los matices reales de la malla (0 / +60 / +100, igual que
-   los corrimientos de los blobs en fondo.js). Todo el color
-   vive acá, no en el relleno del botón. */
-.boton-modo-anillo {
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    padding: 1.5px;
-
-    background: conic-gradient(from var(--ang-anillo, 0deg),
-        hsla(var(--matiz-actual), 85%, 65%, 0.95),
-        hsla(calc(var(--matiz-actual) + 60), 85%, 65%, 0.75) 33%,
-        hsla(calc(var(--matiz-actual) + 100), 85%, 62%, 0.85) 66%,
-        hsla(var(--matiz-actual), 85%, 65%, 0.95));
-
-    -webkit-mask:
-        linear-gradient(#fff 0 0) content-box,
-        linear-gradient(#fff 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-
-    animation: girar-anillo 6s linear infinite;
-}
-
-@keyframes girar-anillo {
-    to { --ang-anillo: 360deg; }
 }
 
 .boton-modo-icono {
