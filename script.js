@@ -1305,8 +1305,72 @@ function arrayBufferABase64(buffer) {
 
 
 // ----------------------------------------
+// INDICADOR DE CALIDAD DE CONEXIÓN
+// ----------------------------------------
+//
+// Mide el tiempo de ida y vuelta pidiendo la página misma (con
+// un parámetro para evitar el caché), y clasifica el resultado
+// en 3 niveles. Arranca en "regular" por defecto hasta que
+// llegue la primera medición real.
+
+async function medirConexion() {
+
+    const inicio = performance.now();
+
+    try {
+
+        await fetch(window.location.pathname + "?_red=" + Date.now(), {
+            method: "HEAD",
+            cache: "no-store"
+        });
+
+        const duracionMs = performance.now() - inicio;
+        actualizarIndicadorRed(duracionMs);
+
+    } catch (error) {
+        // Sin conexión, o la pidió y falló.
+        actualizarIndicadorRed(null);
+    }
+}
+
+
+function actualizarIndicadorRed(duracionMs) {
+
+    const indicador = document.getElementById("indicador-red");
+
+    if (!indicador) {
+        return;
+    }
+
+    const barras = indicador.querySelectorAll(".barra");
+
+    barras.forEach((barra) => barra.classList.remove("activa"));
+    indicador.classList.remove("regular", "mala");
+
+    let nivel;
+
+    if (duracionMs === null || duracionMs >= 400) {
+        nivel = 1;
+        indicador.classList.add("mala");
+    } else if (duracionMs >= 150) {
+        nivel = 2;
+        indicador.classList.add("regular");
+    } else {
+        nivel = 3;
+    }
+
+    for (let i = 0; i < nivel; i++) {
+        barras[i].classList.add("activa");
+    }
+}
+
+
+// ----------------------------------------
 // PUESTA EN MARCHA (al final, con todo ya declarado)
 // ----------------------------------------
 
 iniciarFrasesRotativas();
 iniciarDeteccionDeInactividad();
+
+medirConexion();
+setInterval(medirConexion, 8000);

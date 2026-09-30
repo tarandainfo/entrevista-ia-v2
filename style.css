@@ -335,11 +335,81 @@ body {
    Cronómetro (solo durante la entrevista)
    ---------------------------------------- */
 
+/* ----------------------------------------
+   Indicador de calidad de conexión (siempre visible)
+   ---------------------------------------- */
+
+.indicador-red {
+    position: fixed;
+    top: 20px;
+    right: 24px;
+    z-index: 5;
+
+    display: flex;
+    align-items: flex-end;
+    gap: 3px;
+    height: 16px;
+
+    cursor: default;
+}
+
+.indicador-red .barra {
+    display: block;
+    width: 4px;
+    border-radius: 2px;
+    background: rgba(245, 248, 252, 0.22);
+    transition: background 0.5s ease;
+}
+
+.indicador-red .barra-1 { height: 6px; }
+.indicador-red .barra-2 { height: 11px; }
+.indicador-red .barra-3 { height: 16px; }
+
+.indicador-red .barra.activa {
+    background: rgba(245, 248, 252, 0.85);
+}
+
+/* Regular (arranca así por defecto, hasta la primera medición
+   real): las barras activas se ven en ámbar. */
+.indicador-red.regular .barra.activa {
+    background: #F5A623;
+}
+
+/* Mala conexión: barras activas en rojo suave. */
+.indicador-red.mala .barra.activa {
+    background: #E5484D;
+}
+
+
+/* ----------------------------------------
+   Aviso de posibles errores/demoras por conexión
+   ---------------------------------------- */
+
+.aviso-conexion {
+    position: fixed;
+    bottom: 60px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 3;
+
+    max-width: 320px;
+    text-align: center;
+
+    font-size: 10.5px;
+    font-weight: 400;
+    color: rgba(245, 248, 252, 0.4);
+    letter-spacing: 0.2px;
+    line-height: 1.4;
+
+    pointer-events: none;
+}
+
+
 #cronometro {
     display: none;
 
     position: fixed;
-    top: 20px;
+    top: 44px;
     right: 24px;
     z-index: 3;
 
