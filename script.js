@@ -647,6 +647,10 @@ async function iniciarEntrevista(modo) {
 
     botonesModo.forEach((boton) => { boton.disabled = true; });
 
+    if (window.FondoMalla) {
+        window.FondoMalla.setModoLanding(false);
+    }
+
     mostrarPantallaEntrevista();
 
     actualizarEstado("Conectando con la IA...", null);
@@ -702,6 +706,10 @@ function finalizarEntrevista() {
     }
 
     entrevistaFinalizando = true;
+
+    if (window.FondoMalla) {
+        window.FondoMalla.setModoLanding(true);
+    }
 
     try {
         if (websocket) {
