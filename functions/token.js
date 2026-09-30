@@ -186,7 +186,7 @@ export async function onRequestGet(context) {
                 expireTime,
 
                 liveConnectConstraints: {
-                    model: "gemini-3.8-live",
+                    model: "gemini-3.1-flash-live-preview",
 
                     config: {
                         sessionResumption: {},
@@ -199,6 +199,10 @@ export async function onRequestGet(context) {
                                 }
                             },
                             languageCode: "es-419"
+                        },
+
+                        thinkingConfig: {
+                            thinkingBudget: 0
                         },
 
                         systemInstruction: {

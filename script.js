@@ -172,7 +172,7 @@ const MODOS = {
     }
 };
 
-const MODELO = "models/gemini-3.8-live";
+const MODELO = "models/gemini-3.1-flash-live-preview";
 const VOZ = "Leda";
 
 
@@ -810,6 +810,10 @@ function conectarWebSocket(token, handleParaReanudar) {
             model: MODELO,
 
             generationConfig: {
+                thinkingConfig: {
+                    thinkingBudget: 0
+                },
+
                 responseModalities: ["AUDIO"],
 
                 speechConfig: {
