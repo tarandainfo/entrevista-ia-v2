@@ -104,7 +104,7 @@ Afirmación sin respaldo → indagá con curiosidad. Ángulo por
 cargo: marketing→campaña, dirección→inversión, tecnología→
 producto.
 
-Máx 10 preguntas, cerrá con qué viene después. No entendiste
+Máx 8 preguntas, cerrá con qué viene después. No entendiste
 algo → repreguntá. Tema sensible → empatía.
 `.trim();
 
@@ -113,7 +113,7 @@ const PROMPT_INFOBRAND = [
     TRAMO_INFOBRAND,
     BASE_RITMO,
     BASE_CONTEXTO,
-    construirCierre(10),
+    construirCierre(8),
     BASE_ESTILO,
     BASE_META
 ].join("\n\n");
@@ -136,7 +136,7 @@ sigue.
 Periodista: indagá porqué/impacto, no superficie. Neutral, no
 inventes datos.
 
-Máx 10 preguntas. No entendiste algo → repreguntá. Tema sensible
+Máx 8 preguntas. No entendiste algo → repreguntá. Tema sensible
 → empatía.
 `.trim();
 
@@ -145,7 +145,7 @@ const PROMPT_SPEAKER = [
     TRAMO_SPEAKER,
     BASE_RITMO,
     BASE_CONTEXTO,
-    construirCierre(10),
+    construirCierre(8),
     BASE_ESTILO,
     BASE_META
 ].join("\n\n");
@@ -161,12 +161,12 @@ const MODOS = {
         systemPrompt: PROMPT_LEDA
     },
     infobrand: {
-        totalPreguntas: 10,
+        totalPreguntas: 8,
         turnosIniciales: 2,
         systemPrompt: PROMPT_INFOBRAND
     },
     speaker: {
-        totalPreguntas: 10,
+        totalPreguntas: 8,
         turnosIniciales: 1,
         systemPrompt: PROMPT_SPEAKER
     }
@@ -591,12 +591,23 @@ function descargarNotaComoArchivo(texto) {
 // de la marca.
 
 const TEMAS = [
-    { hue: 190, palabras: ["agro", "ganaderia", "ganadería", "campo", "agricultura", "cultivo", "soja", "ganado"] },
-    { hue: 265, palabras: ["arte", "cultura", "musica", "música", "pintura", "cine", "teatro"] },
+    // Verde — agro
+    { hue: 145, palabras: ["agro", "ganaderia", "ganadería", "campo", "agricultura", "cultivo", "soja", "ganado"] },
+    // Amarillo — real estate / construcción / inmuebles
+    { hue: 50, palabras: ["construccion", "construcción", "inmobiliaria", "inmobiliario", "inmueble", "inmuebles", "edificio", "real estate", "propiedad"] },
+    // Púrpura — economía
+    { hue: 280, palabras: ["economia", "economía", "finanzas", "financiero", "mercado", "inversion", "inversión", "pib", "inflacion", "inflación"] },
+    // Rojo — arte
+    { hue: 5, palabras: ["arte", "cultura", "musica", "música", "pintura", "cine", "teatro"] },
+    // Naranja — marketing
+    { hue: 30, palabras: ["marketing", "publicidad", "branding", "campaña", "campana", "comunicacion", "comunicación"] },
+    // Blanco/negro/gris (saturación muy baja) — tecnología
+    { hue: 220, saturacion: 6, palabras: ["tecnologia", "tecnología", "software", "innovacion", "innovación", "startup", "digital"] },
+
+    // Temas que ya estaban, sin color pedido puntualmente — se
+    // mantienen con su matiz anterior.
     { hue: 195, palabras: ["deporte", "futbol", "fútbol", "deportivo", "atleta", "liga"] },
     { hue: 185, palabras: ["salud", "medico", "médico", "clinica", "clínica", "hospital", "medicina"] },
-    { hue: 215, palabras: ["tecnologia", "tecnología", "software", "innovacion", "innovación", "startup", "digital"] },
-    { hue: 235, palabras: ["construccion", "construcción", "inmobiliaria", "inmobiliario", "edificio", "real estate", "propiedad"] },
     { hue: 250, palabras: ["judicial", "politica", "política", "gobierno", "ley", "tribunal"] }
 ];
 
@@ -610,7 +621,7 @@ function detectarTemaYAjustarColor(texto) {
             if (textoNormalizado.includes(palabra)) {
 
                 if (window.FondoMalla) {
-                    window.FondoMalla.setHueTema(tema.hue);
+                    window.FondoMalla.setHueTema(tema.hue, tema.saturacion);
                 }
 
                 return;

@@ -98,7 +98,7 @@ Afirmación sin respaldo → indagá con curiosidad. Ángulo por
 cargo: marketing→campaña, dirección→inversión, tecnología→
 producto.
 
-Máx 10 preguntas, cerrá con qué viene después. No entendiste
+Máx 8 preguntas, cerrá con qué viene después. No entendiste
 algo → repreguntá. Tema sensible → empatía.
 `.trim();
 
@@ -107,7 +107,7 @@ const PROMPT_INFOBRAND = [
     TRAMO_INFOBRAND,
     BASE_RITMO,
     BASE_CONTEXTO,
-    construirCierre(10),
+    construirCierre(8),
     BASE_ESTILO,
     BASE_META
 ].join("\n\n");
@@ -130,7 +130,7 @@ sigue.
 Periodista: indagá porqué/impacto, no superficie. Neutral, no
 inventes datos.
 
-Máx 10 preguntas. No entendiste algo → repreguntá. Tema sensible
+Máx 8 preguntas. No entendiste algo → repreguntá. Tema sensible
 → empatía.
 `.trim();
 
@@ -139,7 +139,7 @@ const PROMPT_SPEAKER = [
     TRAMO_SPEAKER,
     BASE_RITMO,
     BASE_CONTEXTO,
-    construirCierre(10),
+    construirCierre(8),
     BASE_ESTILO,
     BASE_META
 ].join("\n\n");
@@ -155,12 +155,12 @@ const MODOS = {
         systemPrompt: PROMPT_LEDA
     },
     infobrand: {
-        totalPreguntas: 10,
+        totalPreguntas: 8,
         turnosIniciales: 2,
         systemPrompt: PROMPT_INFOBRAND
     },
     speaker: {
-        totalPreguntas: 10,
+        totalPreguntas: 8,
         turnosIniciales: 1,
         systemPrompt: PROMPT_SPEAKER
     }

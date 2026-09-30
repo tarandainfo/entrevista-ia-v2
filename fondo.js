@@ -32,6 +32,12 @@
     let hueActual = 205;
     let hueObjetivo = 205;
 
+    // Saturación: normalmente 85 (colorido). Para temas que
+    // necesitan un fondo más neutro (blanco/negro/gris, como
+    // tecnología), se puede bajar bastante.
+    let saturacionActual = 85;
+    let saturacionObjetivo = 85;
+
     let animando = false;
 
 
@@ -40,9 +46,9 @@
     // el hue base cambie según el tema.
     const blobs = [
         { xF: 0.25, yF: 0.3, rF: 0.55, corrimiento: 0, vx: 0.00011, vy: 0.00009 },
-        { xF: 0.75, yF: 0.65, rF: 0.6, corrimiento: 60, vx: -0.00009, vy: 0.00012 },
-        { xF: 0.5, yF: 0.85, rF: 0.5, corrimiento: 100, vx: 0.00013, vy: -0.0001 },
-        { xF: 0.15, yF: 0.75, rF: 0.4, corrimiento: 20, vx: 0.0001, vy: -0.00008 }
+        { xF: 0.75, yF: 0.65, rF: 0.6, corrimiento: 18, vx: -0.00009, vy: 0.00012 },
+        { xF: 0.5, yF: 0.85, rF: 0.5, corrimiento: -12, vx: 0.00013, vy: -0.0001 },
+        { xF: 0.15, yF: 0.75, rF: 0.4, corrimiento: 10, vx: 0.0001, vy: -0.00008 }
     ];
 
 
@@ -111,8 +117,9 @@
     }
 
 
-    function setHueTema(hue) {
+    function setHueTema(hue, saturacion) {
         hueObjetivo = hue;
+        saturacionObjetivo = (typeof saturacion === "number") ? saturacion : 85;
     }
 
 
@@ -139,6 +146,7 @@
         // El tono base se desliza suavemente hacia el tema
         // detectado, en vez de saltar de golpe.
         hueActual += (hueObjetivo - hueActual) * 0.01;
+        saturacionActual += (saturacionObjetivo - saturacionActual) * 0.01;
 
         ctx.fillStyle = "#05070C";
         ctx.fillRect(0, 0, ancho, alto);
@@ -155,8 +163,8 @@
             const hue = hueActual + b.corrimiento;
 
             const g = ctx.createRadialGradient(cx, cy, 0, cx, cy, radio);
-            g.addColorStop(0, "hsla(" + hue + ", 85%, 60%, " + opacidad + ")");
-            g.addColorStop(1, "hsla(" + hue + ", 85%, 60%, 0)");
+            g.addColorStop(0, "hsla(" + hue + ", " + saturacionActual + "%, 60%, " + opacidad + ")");
+            g.addColorStop(1, "hsla(" + hue + ", " + saturacionActual + "%, 60%, 0)");
 
             ctx.fillStyle = g;
             ctx.fillRect(0, 0, ancho, alto);
@@ -175,7 +183,7 @@
         const intensidadGlow = 14 + nivel * 46;
         const opacidad = 0.35 + nivel * 0.55;
 
-        const sombra = "0 0 " + intensidadGlow + "px hsla(" + hue + ", 85%, 65%, " + opacidad + ")";
+        const sombra = "0 0 " + intensidadGlow + "px hsla(" + hue + ", " + saturacionActual + "%, 65%, " + opacidad + ")";
 
         for (const el of elementos) {
             el.style.textShadow = sombra;
