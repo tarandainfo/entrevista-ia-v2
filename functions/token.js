@@ -214,7 +214,7 @@ export async function onRequestGet(context) {
                                 startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
                                 endOfSpeechSensitivity: "END_SENSITIVITY_HIGH",
                                 prefixPaddingMs: 250,
-                                silenceDurationMs: 250
+                                silenceDurationMs: 200
                             }
                         },
 

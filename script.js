@@ -755,6 +755,7 @@ function finalizarEntrevista() {
     esReconexion = false;
     reconectando = false;
     permitirEnvioMicrofono = false;
+    yaLlegoRespuesta = false;
 
     // Antes esto se quedaba con el matiz de la entrevista
     // anterior (por ejemplo violeta si habían hablado de arte).
@@ -778,6 +779,7 @@ function finalizarEntrevista() {
 let handleReanudacion = null;
 let esReconexion = false;
 let permitirEnvioMicrofono = false;
+let yaLlegoRespuesta = false;
 let reconectando = false;
 
 function conectarWebSocket(token, handleParaReanudar) {
@@ -835,7 +837,7 @@ function conectarWebSocket(token, handleParaReanudar) {
                     startOfSpeechSensitivity: "START_SENSITIVITY_HIGH",
                     endOfSpeechSensitivity: "END_SENSITIVITY_HIGH",
                     prefixPaddingMs: 250,
-                    silenceDurationMs: 250
+                    silenceDurationMs: 200
                 }
             },
 
@@ -917,6 +919,25 @@ function conectarWebSocket(token, handleParaReanudar) {
 }
 
 
+function enviarDisparadorSaludo() {
+
+    if (websocket && websocket.readyState === WebSocket.OPEN) {
+
+        websocket.send(JSON.stringify({
+            clientContent: {
+                turns: [{
+                    role: "user",
+                    parts: [{
+                        text: "Iniciá la entrevista con tu saludo de presentación."
+                    }]
+                }],
+                turnComplete: true
+            }
+        }));
+    }
+}
+
+
 async function intentarReconexion() {
 
     reconectando = true;
@@ -995,30 +1016,28 @@ function procesarMensaje(mensaje) {
 
         } else {
 
+            yaLlegoRespuesta = false;
+
             // Pequeño margen antes de mandar el disparador: si
             // el mensaje de arranque llega justo cuando también
             // está llegando audio real del micrófono (ruido de
             // fondo, por ejemplo), puede que Gemini lo ignore o
             // se quede esperando. Este margen le da un instante
             // de aire al canal antes de inyectar el texto.
+            setTimeout(enviarDisparadorSaludo, 300);
+
+            // Red de seguridad: si a los 6 segundos todavía no
+            // arrancó a hablar (el disparador se perdió, por lo
+            // que sea), reintentamos una sola vez en vez de
+            // quedarnos trabados en silencio para siempre.
             setTimeout(() => {
 
-                if (websocket && websocket.readyState === WebSocket.OPEN) {
-
-                    websocket.send(JSON.stringify({
-                        clientContent: {
-                            turns: [{
-                                role: "user",
-                                parts: [{
-                                    text: "Iniciá la entrevista con tu saludo de presentación."
-                                }]
-                            }],
-                            turnComplete: true
-                        }
-                    }));
+                if (!yaLlegoRespuesta) {
+                    console.warn("No llegó respuesta al saludo inicial, reintentando...");
+                    enviarDisparadorSaludo();
                 }
 
-            }, 300);
+            }, 6000);
         }
 
         esReconexion = false;
@@ -1053,6 +1072,7 @@ function procesarMensaje(mensaje) {
         // con el disparador de saludo, así que habilitamos el
         // envío (si no estaba habilitado ya).
         permitirEnvioMicrofono = true;
+        yaLlegoRespuesta = true;
 
         for (const parte of contenido.modelTurn.parts) {
 
