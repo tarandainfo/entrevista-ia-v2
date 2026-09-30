@@ -807,13 +807,6 @@ function conectarWebSocket(token, handleParaReanudar) {
 
     esReconexion = !!handleParaReanudar;
 
-    // En una reconexión ya veníamos en medio de la charla, no
-    // hay ningún disparador de saludo con el que competir — el
-    // micrófono puede mandar audio de entrada, sin esperar.
-    if (esReconexion) {
-        permitirEnvioMicrofono = true;
-    }
-
     websocket = new WebSocket(url);
 
     websocket.addEventListener("open", () => {
@@ -1079,11 +1072,12 @@ function procesarMensaje(mensaje) {
 
         actualizarEstado("La IA está hablando...", "hablando");
 
-        // Ya arrancó a hablar de verdad — a partir de acá no
-        // hay más riesgo de que el audio del micrófono compita
-        // con el disparador de saludo, así que habilitamos el
-        // envío (si no estaba habilitado ya).
-        permitirEnvioMicrofono = true;
+        // Mientras LEDA habla, el micrófono queda silenciado —
+        // no le mandamos audio del entrevistado a Gemini hasta
+        // que ella termine su turno. Esto también resuelve, de
+        // paso, el problema original de arranque (nunca se
+        // manda nada hasta que se confirma una respuesta real).
+        permitirEnvioMicrofono = false;
         yaLlegoRespuesta = true;
 
         for (const parte of contenido.modelTurn.parts) {
@@ -1116,6 +1110,10 @@ function procesarMensaje(mensaje) {
     if (contenido.turnComplete) {
 
         actualizarEstado("Escuchando...", "escuchando");
+
+        // LEDA terminó su turno — recién acá habilitamos el
+        // micrófono del entrevistado.
+        permitirEnvioMicrofono = true;
 
         contadorTurnosIA++;
         actualizarProgreso();

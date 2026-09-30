@@ -44,6 +44,15 @@ class MicProcessor extends AudioWorkletProcessor {
             this.buffers = [];
             this.samplesAcumulados = 0;
 
+            // Filtro de silencio + nivelación: si el pedacito
+            // es puro murmullo de fondo (por debajo del umbral),
+            // lo mandamos como silencio real en vez de recortar
+            // el envío (recortar el envío en sí rompía la
+            // detección de turno de Gemini, ya lo probamos). Si
+            // hay voz real, nivelamos el volumen para que quede
+            // más parejo.
+            this._procesarNivel(juntado);
+
             const pcm16 = this._remuestrearAPCM16(
                 juntado,
                 sampleRate,
@@ -67,6 +76,43 @@ class MicProcessor extends AudioWorkletProcessor {
         }
 
         return resultado;
+    }
+
+    _procesarNivel(buffer) {
+
+        // RMS: qué tan fuerte es, en promedio, este pedacito.
+        let sumaCuadrados = 0;
+
+        for (let i = 0; i < buffer.length; i++) {
+            sumaCuadrados += buffer[i] * buffer[i];
+        }
+
+        const rms = Math.sqrt(sumaCuadrados / buffer.length);
+
+        // Umbral conservador: solo silencia murmullo de fondo
+        // muy bajo (aire acondicionado, gente lejos), no
+        // arriesga cortar el inicio de una voz suave cercana.
+        const UMBRAL_SILENCIO = 0.012;
+
+        if (rms < UMBRAL_SILENCIO) {
+            buffer.fill(0);
+            return;
+        }
+
+        // Nivelación (compresión suave): si la voz llegó floja,
+        // la subimos hacia un nivel objetivo; si llegó fuerte,
+        // no la tocamos de más (el límite final a [-1, 1] en el
+        // remuestreo ya actúa como tope contra picos).
+        const NIVEL_OBJETIVO = 0.18;
+        const GANANCIA_MAXIMA = 3;
+
+        const ganancia = Math.min(GANANCIA_MAXIMA, NIVEL_OBJETIVO / rms);
+
+        if (ganancia > 1) {
+            for (let i = 0; i < buffer.length; i++) {
+                buffer[i] *= ganancia;
+            }
+        }
     }
 
     _remuestrearAPCM16(buffer, sampleRateOrigen, sampleRateDestino) {
