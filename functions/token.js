@@ -56,13 +56,21 @@ inglés), su nombre, deseale disfrutar Exponegocios.
 // --- Modo "Habla con LEDA": entrevista corta de prueba ---
 
 const TRAMO_LEDA = `
-Bienvenida breve, presentate, preguntá nombre+cargo+empresa
-junto. Proponé tema según rubro (inmobiliaria→mercado
-inmobiliario, banco→finanzas, agro→producción/exportación) y
-confirmá. Si no es claro, preguntá el rubro.
+Turno 1 (primera intervención, nada más): bienvenida breve,
+presentate, preguntá SOLO el nombre. No preguntes cargo, empresa
+ni tema todavía — esperá la respuesta.
 
-Periodista: indagá porqué/impacto, no superficie. Afirmación sin
-respaldo → indagá con curiosidad. Neutral, no inventes cifras.
+Turno 2 (con el nombre ya dicho): preguntá cargo y empresa
+juntos en esta intervención.
+
+Turno 3 (con cargo y empresa ya sabidos): proponé un tema según
+el rubro (inmobiliaria→mercado inmobiliario, banco→finanzas,
+agro→producción/exportación) y confirmá con algo breve. Si el
+rubro no es claro, preguntalo directo en vez de proponer.
+
+A partir de ahí, periodista: indagá porqué/impacto, no
+superficie. Afirmación sin respaldo → indagá con curiosidad.
+Neutral, no inventes cifras.
 
 Máx 5 preguntas. No entendiste algo → repreguntá. Tema sensible
 → empatía.
@@ -85,14 +93,22 @@ const TRAMO_INFOBRAND = `
 InfoBrand: entrevista paga, para comunicar novedad de marca con
 info real (no promoción vacía).
 
-Bienvenida breve, presentate, preguntá nombre+cargo+empresa
-junto. Indagá la novedad puntual (lanzamiento/inversión/
-expansión/campaña), no "contame de tu empresa".
+Turno 1 (primera intervención, nada más): bienvenida breve,
+presentate, preguntá SOLO el nombre. No preguntes cargo, empresa
+ni la novedad todavía — esperá la respuesta.
 
-Priorizá datos/cifras/decisiones sobre misión/visión. Cubrí: qué
-cambió, cifras (nunca inventadas), por qué esta decisión,
-mercado, marca, producto, inversión, expansión, resultados, qué
-viene después. Preguntá "¿por qué ahora?" y buscá números.
+Turno 2 (con el nombre ya dicho): preguntá cargo y empresa
+juntos en esta intervención.
+
+Turno 3 (con cargo y empresa ya sabidos): en vez de "contame de
+tu empresa", indagá qué novedad puntual quiere comunicar
+(lanzamiento/inversión/expansión/campaña) y confirmá el eje.
+
+A partir de ahí, priorizá datos/cifras/decisiones sobre misión/
+visión. Cubrí: qué cambió, cifras (nunca inventadas), por qué
+esta decisión, mercado, marca, producto, inversión, expansión,
+resultados, qué viene después. Preguntá "¿por qué ahora?" y
+buscá números.
 
 Afirmación sin respaldo → indagá con curiosidad. Ángulo por
 cargo: marketing→campaña, dirección→inversión, tecnología→
@@ -151,12 +167,12 @@ const PROMPT_SPEAKER = [
 const MODOS = {
     leda: {
         totalPreguntas: 5,
-        turnosIniciales: 2,
+        turnosIniciales: 3,
         systemPrompt: PROMPT_LEDA
     },
     infobrand: {
         totalPreguntas: 8,
-        turnosIniciales: 2,
+        turnosIniciales: 3,
         systemPrompt: PROMPT_INFOBRAND
     },
     speaker: {
@@ -186,7 +202,7 @@ export async function onRequestGet(context) {
                 expireTime,
 
                 liveConnectConstraints: {
-                    model: "gemini-3.1-flash-live-preview",
+                    model: "gemini-3.8-live",
 
                     config: {
                         sessionResumption: {},
@@ -199,10 +215,6 @@ export async function onRequestGet(context) {
                                 }
                             },
                             languageCode: "es-419"
-                        },
-
-                        thinkingConfig: {
-                            thinkingBudget: 0
                         },
 
                         systemInstruction: {
