@@ -108,6 +108,8 @@ const VOZ = "Leda";
 
 let websocket = null;
 let audioContext = null;
+let gananciaSalida = null;
+let compresorSalida = null;
 let microphoneStream = null;
 let procesadorMicrofono = null;
 let analizadorAudio = null;
@@ -577,6 +579,7 @@ async function iniciarEntrevista() {
 
     if (window.FondoMalla) {
         window.FondoMalla.setModoLanding(false);
+        window.FondoMalla.pausar();
     }
 
     mostrarPantallaEntrevista();
@@ -637,6 +640,7 @@ function finalizarEntrevista() {
 
     if (window.FondoMalla) {
         window.FondoMalla.setModoLanding(true);
+        window.FondoMalla.reanudar();
     }
 
     try {
@@ -665,6 +669,8 @@ function finalizarEntrevista() {
 
     websocket = null;
     audioContext = null;
+    gananciaSalida = null;
+    compresorSalida = null;
     microphoneStream = null;
     procesadorMicrofono = null;
     analizadorAudio = null;
@@ -791,11 +797,12 @@ function conectarWebSocket(token, handleParaReanudar) {
             return;
         }
 
-        // Para diagnosticar rápido si algo del protocolo
-        // no coincide con lo esperado. Usamos JSON.stringify
-        // para que se vea el contenido completo como texto,
-        // en vez de un objeto colapsado que hay que ir abriendo.
-        console.log("Mensaje de Gemini:", JSON.stringify(mensaje));
+        // Log liviano: solo qué tipo de mensaje llegó (sus
+        // claves), no el contenido completo — así no se paga
+        // el costo de stringificar el audio en base64 en cada
+        // mensaje, pero seguimos teniendo algo de visibilidad
+        // si hace falta diagnosticar algo puntual.
+        console.log("Mensaje de Gemini:", Object.keys(mensaje));
 
         procesarMensaje(mensaje);
     });
@@ -1064,6 +1071,24 @@ async function iniciarMicrofono() {
     audioContext = new AudioContext();
     await audioContext.resume();
 
+    // Cadena de salida para la voz de LEDA: una ganancia fija
+    // (la subimos un poco de base) seguida de un compresor que
+    // nivela el volumen — sube las partes que vienen más bajas
+    // y frena las que vienen más fuertes, para que no se sienta
+    // que va cayendo a medida que habla.
+    gananciaSalida = audioContext.createGain();
+    gananciaSalida.gain.value = 1.3;
+
+    compresorSalida = audioContext.createDynamicsCompressor();
+    compresorSalida.threshold.value = -28;
+    compresorSalida.knee.value = 18;
+    compresorSalida.ratio.value = 6;
+    compresorSalida.attack.value = 0.003;
+    compresorSalida.release.value = 0.15;
+
+    gananciaSalida.connect(compresorSalida);
+    compresorSalida.connect(audioContext.destination);
+
     // Analizador de audio: le da al fondo de malla el
     // volumen real en tiempo real, para que se intensifique
     // cuando LEDA está hablando.
@@ -1188,7 +1213,15 @@ function programarReproduccion(buffer) {
 
     const source = audioContext.createBufferSource();
     source.buffer = buffer;
-    source.connect(audioContext.destination);
+
+    if (gananciaSalida) {
+        source.connect(gananciaSalida);
+    } else {
+        // Red de seguridad, por si todavía no se armó la cadena
+        // de salida por algún motivo — mejor sonido directo que
+        // nada.
+        source.connect(audioContext.destination);
+    }
 
     if (analizadorAudio) {
         source.connect(analizadorAudio);
