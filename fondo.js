@@ -135,13 +135,36 @@
     }
 
 
+    function pausar() {
+        pausada = true;
+    }
+
+
+    function reanudar() {
+
+        if (pausada) {
+            pausada = false;
+            requestAnimationFrame(bucleDeAnimacion);
+        }
+    }
+
+
     function setHueTema(hue, saturacion) {
         hueObjetivo = hue;
         saturacionObjetivo = (typeof saturacion === "number") ? saturacion : 85;
     }
 
 
+    let pausada = false;
+
     function bucleDeAnimacion(t) {
+
+        // Pausada (durante la entrevista, para liberar CPU para
+        // el audio en tiempo real): dejamos de pedir más
+        // cuadros hasta que alguien llame a reanudar().
+        if (pausada) {
+            return;
+        }
 
         requestAnimationFrame(bucleDeAnimacion);
 
@@ -248,7 +271,9 @@
         conectarAnalizador,
         setModoAtraeme,
         setModoLanding,
-        setHueTema
+        setHueTema,
+        pausar,
+        reanudar
     };
 
 })();

@@ -154,11 +154,26 @@ botonComenzar.addEventListener("click", iniciarEntrevista);
 
 botonFinalizar.addEventListener("click", finalizarEntrevista);
 
+// Llama a una función de FondoMalla solo si existe. Si falta
+// (por ejemplo, un fondo.js viejo que no tiene todavía alguna
+// función nueva), avisa por consola en vez de romper el resto
+// del flujo con una excepción sin atrapar.
+function llamarFondoMalla(nombreFuncion, ...args) {
+
+    if (window.FondoMalla && typeof window.FondoMalla[nombreFuncion] === "function") {
+        window.FondoMalla[nombreFuncion](...args);
+    } else {
+        console.warn(
+            `FondoMalla.${nombreFuncion} no está disponible ` +
+            "(¿fondo.js desactualizado?). Se ignora, pero " +
+            "convendría actualizar el archivo."
+        );
+    }
+}
+
 // El fondo de malla arranca ya desde que carga la página
 // (calmo), no recién al empezar la entrevista.
-if (window.FondoMalla) {
-    window.FondoMalla.iniciar("fondo-malla");
-}
+llamarFondoMalla("iniciar", "fondo-malla");
 
 
 
@@ -352,9 +367,7 @@ function iniciarDeteccionDeInactividad() {
 
             if (pantallaInicio.classList.contains("atrayendo")) {
                 pantallaInicio.classList.remove("atrayendo");
-                if (window.FondoMalla) {
-                    window.FondoMalla.setModoAtraeme(false);
-                }
+                llamarFondoMalla("setModoAtraeme", false);
             }
 
             return;
@@ -364,9 +377,7 @@ function iniciarDeteccionDeInactividad() {
 
         pantallaInicio.classList.toggle("atrayendo", inactivo);
 
-        if (window.FondoMalla) {
-            window.FondoMalla.setModoAtraeme(inactivo);
-        }
+        llamarFondoMalla("setModoAtraeme", inactivo);
 
     }, 2000);
 }
@@ -556,9 +567,7 @@ function detectarTemaYAjustarColor(texto) {
 
             if (textoNormalizado.includes(palabra)) {
 
-                if (window.FondoMalla) {
-                    window.FondoMalla.setHueTema(tema.hue, tema.saturacion);
-                }
+                llamarFondoMalla("setHueTema", tema.hue, tema.saturacion);
 
                 return;
             }
@@ -577,10 +586,8 @@ async function iniciarEntrevista() {
 
     botonComenzar.disabled = true;
 
-    if (window.FondoMalla) {
-        window.FondoMalla.setModoLanding(false);
-        window.FondoMalla.pausar();
-    }
+    llamarFondoMalla("setModoLanding", false);
+    llamarFondoMalla("pausar");
 
     mostrarPantallaEntrevista();
 
@@ -638,10 +645,8 @@ function finalizarEntrevista() {
 
     entrevistaFinalizando = true;
 
-    if (window.FondoMalla) {
-        window.FondoMalla.setModoLanding(true);
-        window.FondoMalla.reanudar();
-    }
+    llamarFondoMalla("setModoLanding", true);
+    llamarFondoMalla("reanudar");
 
     try {
         if (websocket) {
@@ -694,9 +699,7 @@ function finalizarEntrevista() {
     // Antes esto se quedaba con el matiz de la entrevista
     // anterior (por ejemplo violeta si habían hablado de arte).
     // Lo volvemos al celeste base para la próxima persona.
-    if (window.FondoMalla) {
-        window.FondoMalla.setHueTema(205);
-    }
+    llamarFondoMalla("setHueTema", 205);
 
     botonComenzar.disabled = false;
 
@@ -1096,9 +1099,7 @@ async function iniciarMicrofono() {
     analizadorAudio.fftSize = 256;
     analizadorAudio.smoothingTimeConstant = 0.4;
 
-    if (window.FondoMalla) {
-        window.FondoMalla.conectarAnalizador(analizadorAudio);
-    }
+    llamarFondoMalla("conectarAnalizador", analizadorAudio);
 
     await audioContext.audioWorklet.addModule("mic-processor.js");
 
