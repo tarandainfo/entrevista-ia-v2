@@ -525,8 +525,9 @@ body {
 
 .qr-leda-card {
     position: fixed;
-    top: 52px;
-    right: 24px;
+    top: 50%;
+    left: 32px;
+    transform: translateY(-50%);
     z-index: 4;
 
     width: 200px;
