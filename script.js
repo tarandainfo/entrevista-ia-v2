@@ -92,101 +92,11 @@ const PROMPT_LEDA = [
     BASE_META
 ].join("\n\n");
 
-
-// --- Modo "InfoBrand": entrevista paga/pautada de marca ---
-
-const TRAMO_INFOBRAND = `
-InfoBrand: entrevista paga, para comunicar novedad de marca con
-info real (no promoción vacía).
-
-Turno 1 (primera intervención, nada más): bienvenida breve,
-presentate, preguntá SOLO el nombre. No preguntes cargo, empresa
-ni la novedad todavía — esperá la respuesta.
-
-Turno 2 (con el nombre ya dicho): preguntá cargo y empresa
-juntos en esta intervención.
-
-Turno 3 (con cargo y empresa ya sabidos): en vez de "contame de
-tu empresa", indagá qué novedad puntual quiere comunicar
-(lanzamiento/inversión/expansión/campaña) y confirmá el eje.
-
-A partir de ahí, priorizá datos/cifras/decisiones sobre misión/
-visión. Cubrí: qué cambió, cifras (nunca inventadas), por qué
-esta decisión, mercado, marca, producto, inversión, expansión,
-resultados, qué viene después. Preguntá "¿por qué ahora?" y
-buscá números.
-
-Afirmación sin respaldo → indagá con curiosidad. Ángulo por
-cargo: marketing→campaña, dirección→inversión, tecnología→
-producto.
-
-Máx 8 preguntas, cerrá con qué viene después. No entendiste
-algo → repreguntá. Tema sensible → empatía.
-`.trim();
-
-const PROMPT_INFOBRAND = [
-    BASE_IDENTIDAD,
-    TRAMO_INFOBRAND,
-    BASE_RITMO,
-    BASE_CONTEXTO,
-    construirCierre(8),
-    BASE_ESTILO,
-    BASE_META
-].join("\n\n");
-
-
-// --- Modo "Speaker": entrevista a un speaker del evento ---
-//
-// Por ahora LEDA le pregunta directamente su nombre y el tema
-// de su charla (todavía no tenemos la lista de speakers/temas
-// para que lo sepa de antemano — cuando la tengamos, se puede
-// sumar acá para que arranque ya sabiendo quién es).
-
-const TRAMO_SPEAKER = `
-Entrevista a speaker de Exponegocios. Bienvenida breve,
-presentate, preguntá nombre y tema de su charla junto. Profundizá:
-idea central, 1-2 puntos concretos, ejemplos/datos, aplicación
-práctica en Paraguay. Al final: qué se lleva el público o qué
-sigue.
-
-Periodista: indagá porqué/impacto, no superficie. Neutral, no
-inventes datos.
-
-Máx 8 preguntas. No entendiste algo → repreguntá. Tema sensible
-→ empatía.
-`.trim();
-
-const PROMPT_SPEAKER = [
-    BASE_IDENTIDAD,
-    TRAMO_SPEAKER,
-    BASE_RITMO,
-    BASE_CONTEXTO,
-    construirCierre(8),
-    BASE_ESTILO,
-    BASE_META
-].join("\n\n");
-
-
-// Configuración por modo: cuántas preguntas, cuántos turnos
+// Único modo ahora: cuántas preguntas, y cuántos turnos
 // iniciales aproximados antes de la primera pregunta real (para
-// el cálculo del progreso), y qué prompt usar.
-const MODOS = {
-    leda: {
-        totalPreguntas: 5,
-        turnosIniciales: 3,
-        systemPrompt: PROMPT_LEDA
-    },
-    infobrand: {
-        totalPreguntas: 8,
-        turnosIniciales: 3,
-        systemPrompt: PROMPT_INFOBRAND
-    },
-    speaker: {
-        totalPreguntas: 8,
-        turnosIniciales: 1,
-        systemPrompt: PROMPT_SPEAKER
-    }
-};
+// el cálculo del progreso).
+const TOTAL_PREGUNTAS = 5;
+const TURNOS_INICIALES = 3;
 
 const MODELO = "models/gemini-3.8-live";
 const VOZ = "Leda";
@@ -220,7 +130,7 @@ let scheduledSources = [];
 // ELEMENTOS DEL DOM
 // ----------------------------------------
 
-const botonesModo = document.querySelectorAll(".boton-modo");
+const botonComenzar = document.getElementById("boton-comenzar");
 const contenedorEstado = document.getElementById("estado");
 const textoEstadoSpan = document.getElementById("texto-estado");
 const contenedorProgreso = document.getElementById("progreso");
@@ -233,23 +143,12 @@ const chatQuien = document.getElementById("chat-quien");
 const chatTexto = document.getElementById("chat-texto");
 const botonFinalizar = document.getElementById("finalizar");
 
-// Modo elegido en la pantalla de inicio ("leda" | "infobrand" |
-// "speaker") y los valores que dependen de eso (cuántas
-// preguntas tiene ese modo, y desde qué turno aproximado
-// arrancan a contar como preguntas de la entrevista).
-let modoActual = "leda";
-let TOTAL_PREGUNTAS = MODOS[modoActual].totalPreguntas;
-let TURNOS_HASTA_CIERRE =
-    MODOS[modoActual].turnosIniciales + TOTAL_PREGUNTAS + 1;
+const TURNOS_HASTA_CIERRE = TURNOS_INICIALES + TOTAL_PREGUNTAS + 1;
 
 let contadorTurnosIA = 0;
 let cierreEntregado = false;
 
-botonesModo.forEach((boton) => {
-    boton.addEventListener("click", () => {
-        iniciarEntrevista(boton.dataset.modo);
-    });
-});
+botonComenzar.addEventListener("click", iniciarEntrevista);
 
 botonFinalizar.addEventListener("click", finalizarEntrevista);
 
@@ -299,7 +198,7 @@ function actualizarProgreso() {
     // pregunta), pero da una noción razonable de avance.
     const preguntaActual = Math.min(
         TOTAL_PREGUNTAS,
-        Math.max(0, contadorTurnosIA - MODOS[modoActual].turnosIniciales)
+        Math.max(0, contadorTurnosIA - TURNOS_INICIALES)
     );
 
     const puntos = contenedorProgreso.querySelectorAll(".punto");
@@ -670,17 +569,11 @@ function detectarTemaYAjustarColor(texto) {
 // INICIO DE LA ENTREVISTA
 // ----------------------------------------
 
-async function iniciarEntrevista(modo) {
-
-    modoActual = MODOS[modo] ? modo : "leda";
-
-    TOTAL_PREGUNTAS = MODOS[modoActual].totalPreguntas;
-    TURNOS_HASTA_CIERRE =
-        MODOS[modoActual].turnosIniciales + TOTAL_PREGUNTAS + 1;
+async function iniciarEntrevista() {
 
     crearPuntosDeProgreso();
 
-    botonesModo.forEach((boton) => { boton.disabled = true; });
+    botonComenzar.disabled = true;
 
     if (window.FondoMalla) {
         window.FondoMalla.setModoLanding(false);
@@ -698,7 +591,7 @@ async function iniciarEntrevista(modo) {
         // arrancar la otra. Esto acorta bastante el tiempo
         // hasta que LEDA arranca a hablar.
         const [respuesta] = await Promise.all([
-            fetch("/token?modo=" + modoActual),
+            fetch("/token"),
             iniciarMicrofono()
         ]);
 
@@ -799,7 +692,7 @@ function finalizarEntrevista() {
         window.FondoMalla.setHueTema(205);
     }
 
-    botonesModo.forEach((boton) => { boton.disabled = false; });
+    botonComenzar.disabled = false;
 
     setTimeout(() => {
         entrevistaFinalizando = false;
@@ -853,7 +746,7 @@ function conectarWebSocket(token, handleParaReanudar) {
             },
 
             systemInstruction: {
-                parts: [{ text: MODOS[modoActual].systemPrompt }]
+                parts: [{ text: PROMPT_LEDA }]
             },
 
             realtimeInputConfig: {
@@ -969,7 +862,7 @@ async function intentarReconexion() {
 
     try {
 
-        const respuesta = await fetch("/token?modo=" + modoActual);
+        const respuesta = await fetch("/token");
 
         if (!respuesta.ok) {
             throw new Error("No se pudo obtener un token nuevo para reconectar.");

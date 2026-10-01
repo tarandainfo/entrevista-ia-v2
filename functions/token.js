@@ -86,109 +86,9 @@ const PROMPT_LEDA = [
     BASE_META
 ].join("\n\n");
 
-
-// --- Modo "InfoBrand": entrevista paga/pautada de marca ---
-
-const TRAMO_INFOBRAND = `
-InfoBrand: entrevista paga, para comunicar novedad de marca con
-info real (no promoción vacía).
-
-Turno 1 (primera intervención, nada más): bienvenida breve,
-presentate, preguntá SOLO el nombre. No preguntes cargo, empresa
-ni la novedad todavía — esperá la respuesta.
-
-Turno 2 (con el nombre ya dicho): preguntá cargo y empresa
-juntos en esta intervención.
-
-Turno 3 (con cargo y empresa ya sabidos): en vez de "contame de
-tu empresa", indagá qué novedad puntual quiere comunicar
-(lanzamiento/inversión/expansión/campaña) y confirmá el eje.
-
-A partir de ahí, priorizá datos/cifras/decisiones sobre misión/
-visión. Cubrí: qué cambió, cifras (nunca inventadas), por qué
-esta decisión, mercado, marca, producto, inversión, expansión,
-resultados, qué viene después. Preguntá "¿por qué ahora?" y
-buscá números.
-
-Afirmación sin respaldo → indagá con curiosidad. Ángulo por
-cargo: marketing→campaña, dirección→inversión, tecnología→
-producto.
-
-Máx 8 preguntas, cerrá con qué viene después. No entendiste
-algo → repreguntá. Tema sensible → empatía.
-`.trim();
-
-const PROMPT_INFOBRAND = [
-    BASE_IDENTIDAD,
-    TRAMO_INFOBRAND,
-    BASE_RITMO,
-    BASE_CONTEXTO,
-    construirCierre(8),
-    BASE_ESTILO,
-    BASE_META
-].join("\n\n");
-
-
-// --- Modo "Speaker": entrevista a un speaker del evento ---
-//
-// Por ahora LEDA le pregunta directamente su nombre y el tema
-// de su charla (todavía no tenemos la lista de speakers/temas
-// para que lo sepa de antemano — cuando la tengamos, se puede
-// sumar acá para que arranque ya sabiendo quién es).
-
-const TRAMO_SPEAKER = `
-Entrevista a speaker de Exponegocios. Bienvenida breve,
-presentate, preguntá nombre y tema de su charla junto. Profundizá:
-idea central, 1-2 puntos concretos, ejemplos/datos, aplicación
-práctica en Paraguay. Al final: qué se lleva el público o qué
-sigue.
-
-Periodista: indagá porqué/impacto, no superficie. Neutral, no
-inventes datos.
-
-Máx 8 preguntas. No entendiste algo → repreguntá. Tema sensible
-→ empatía.
-`.trim();
-
-const PROMPT_SPEAKER = [
-    BASE_IDENTIDAD,
-    TRAMO_SPEAKER,
-    BASE_RITMO,
-    BASE_CONTEXTO,
-    construirCierre(8),
-    BASE_ESTILO,
-    BASE_META
-].join("\n\n");
-
-
-// Configuración por modo: cuántas preguntas, cuántos turnos
-// iniciales aproximados antes de la primera pregunta real (para
-// el cálculo del progreso), y qué prompt usar.
-const MODOS = {
-    leda: {
-        totalPreguntas: 5,
-        turnosIniciales: 3,
-        systemPrompt: PROMPT_LEDA
-    },
-    infobrand: {
-        totalPreguntas: 8,
-        turnosIniciales: 3,
-        systemPrompt: PROMPT_INFOBRAND
-    },
-    speaker: {
-        totalPreguntas: 8,
-        turnosIniciales: 1,
-        systemPrompt: PROMPT_SPEAKER
-    }
-};
-
 export async function onRequestGet(context) {
 
     try {
-
-        const url = new URL(context.request.url);
-        const modoPedido = url.searchParams.get("modo");
-        const modo = MODOS[modoPedido] ? modoPedido : "leda";
 
         const ai = new GoogleGenAI({
             apiKey: context.env.GEMINI_API_KEY
@@ -218,7 +118,7 @@ export async function onRequestGet(context) {
                         },
 
                         systemInstruction: {
-                            parts: [{ text: MODOS[modo].systemPrompt }]
+                            parts: [{ text: PROMPT_LEDA }]
                         },
 
                         realtimeInputConfig: {
