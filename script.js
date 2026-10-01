@@ -1080,13 +1080,17 @@ async function iniciarMicrofono() {
     // y frena las que vienen más fuertes, para que no se sienta
     // que va cayendo a medida que habla.
     gananciaSalida = audioContext.createGain();
-    gananciaSalida.gain.value = 1.3;
+    gananciaSalida.gain.value = 2.2;
 
+    // Con la ganancia tan subida, el compresor ahora tiene que
+    // trabajar casi como un limitador (umbral bajo, ratio alto,
+    // ataque rápido) para que no se distorsione al tocar el
+    // techo digital.
     compresorSalida = audioContext.createDynamicsCompressor();
-    compresorSalida.threshold.value = -28;
-    compresorSalida.knee.value = 18;
-    compresorSalida.ratio.value = 6;
-    compresorSalida.attack.value = 0.003;
+    compresorSalida.threshold.value = -24;
+    compresorSalida.knee.value = 10;
+    compresorSalida.ratio.value = 14;
+    compresorSalida.attack.value = 0.002;
     compresorSalida.release.value = 0.15;
 
     gananciaSalida.connect(compresorSalida);
