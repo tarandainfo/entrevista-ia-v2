@@ -519,6 +519,68 @@ body {
 }
 
 /* ----------------------------------------
+   Tarjeta "hablá con LEDA desde tu celular"
+   (solo en la pantalla de inicio)
+   ---------------------------------------- */
+
+.qr-leda-card {
+    position: fixed;
+    top: 52px;
+    right: 24px;
+    z-index: 4;
+
+    width: 200px;
+
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(16px);
+    border-radius: 28px;
+    padding: 20px;
+
+    text-align: center;
+
+    /* El borde en sí: un degradé animado detrás, visible solo
+       a través del padding (truco del doble fondo con
+       background-origin). */
+    border: 2px solid transparent;
+    background-image:
+        linear-gradient(rgba(5, 7, 12, 0.92), rgba(5, 7, 12, 0.92)),
+        linear-gradient(130deg, #2E7BBF 10%, #E8F4FF 40%, #D9B8FF 60%, #6A2E9F 90%);
+    background-origin: border-box;
+    background-clip: padding-box, border-box;
+    background-size: 100% 100%, 320% 320%;
+    background-position: 0 0, 0% 50%;
+
+    animation: brillo-borde-qr-leda 6s ease-in-out infinite;
+
+    box-shadow: 0 0 28px -3px rgba(90, 200, 255, 0.5);
+}
+
+#pantalla-entrevista.activa ~ .qr-leda-card {
+    display: none;
+}
+
+@keyframes brillo-borde-qr-leda {
+    0%, 100% { background-position: 0 0, 0% 50%; }
+    50% { background-position: 0 0, 100% 50%; }
+}
+
+.qr-leda-texto {
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    color: #F5F8FC;
+    margin: 0 0 14px;
+}
+
+.qr-leda-card img {
+    width: 100%;
+    max-width: 155px;
+    display: block;
+    margin: 0 auto;
+    border-radius: 16px;
+}
+
+/* ----------------------------------------
    Botón de finalizar (solo durante la entrevista)
    ---------------------------------------- */
 
