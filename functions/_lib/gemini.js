@@ -67,8 +67,8 @@ function datosDelBloque(bloque) {
 export function modelosCandidatos(env) {
     const lista = [
         env.GEMINI_CHAT_MODEL,
+        "gemini-3.8-flash",
         "gemini-3.5-flash-lite",
-        "gemini-flash-lite-latest",
         "gemini-flash-latest"
     ].filter(Boolean);
 
@@ -128,7 +128,7 @@ async function llamarGemini({ env, contents, systemInstruction, buscarWeb }) {
         generationConfig: { maxOutputTokens: 8192 }
     };
 
-    let primeraFalla = null;
+    const fallas = [];
 
     for (const modelo of modelosCandidatos(env)) {
         const respuesta = await probarModelo(env, modelo, cuerpoBase, buscarWeb, true);
@@ -145,13 +145,14 @@ async function llamarGemini({ env, contents, systemInstruction, buscarWeb }) {
 
         console.error(`Gemini rechazó el modelo ${modelo}: ${falla.status} ${falla.motivo}`);
 
-        if (!primeraFalla) primeraFalla = falla;
+        fallas.push(falla);
 
-        // Clave inválida o sin cuota: probar otros modelos no ayuda.
-        if (falla.status === 401 || falla.status === 429) break;
+        // Clave inválida: probar otros modelos no ayuda. La cuota, en
+        // cambio, se cuenta por modelo: otro modelo puede tener cupo.
+        if (falla.status === 401) break;
     }
 
-    return { respuesta: null, falla: primeraFalla };
+    return { respuesta: null, falla: fallas[0] || null, fallas };
 }
 
 // Prueba corta (sin transmitir) para la página de diagnóstico.
@@ -205,13 +206,18 @@ export async function transmitir({ env, contents, instruccion, buscarWeb, enviar
 
     if (!llamada.respuesta) {
         const f = llamada.falla || { status: 0, motivo: "sin detalle", modelo: "?" };
+        const otros = (llamada.fallas || []).slice(1)
+            .map((x) => `${x.modelo} (${x.status})`)
+            .join(", ");
+
         return {
             texto: "",
             fuentes: [],
             clienteSeFue: false,
             error:
                 "No pude comunicarme con el modelo en este momento. Intenta de nuevo. " +
-                `(Detalle técnico: ${f.status || "sin conexión"} con ${f.modelo}: ${f.motivo})`
+                `(Detalle técnico: ${f.status || "sin conexión"} con ${f.modelo}: ${f.motivo}` +
+                (otros ? `. También se probó: ${otros}` : "") + ")"
         };
     }
 
