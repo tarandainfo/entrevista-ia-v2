@@ -29,7 +29,11 @@ function soloTexto(valor) {
 }
 
 function datosDePersona(usuario) {
-    const nombre = soloTexto(usuario.nombre) || "la persona";
+    if (!soloTexto(usuario.nombre)) {
+        return "PERSONA: no conoces su nombre ni su género. No inventes un nombre; trátala con cercanía y usa expresiones neutras.";
+    }
+
+    const nombre = soloTexto(usuario.nombre);
     const completo = [soloTexto(usuario.nombre), soloTexto(usuario.apellido)].filter(Boolean).join(" ");
 
     let genero;

@@ -3,6 +3,7 @@ import {
     error,
     origenValido,
     asegurarEsquema,
+    cuentasActivas,
     crearCookieSesion,
     usuarioPublico,
     ahoraMs
@@ -13,6 +14,10 @@ import {
 
 export async function onRequestPost(context) {
     const { request, env } = context;
+
+    if (!cuentasActivas(env)) {
+        return error("Las cuentas están desactivadas.", 404);
+    }
 
     if (!origenValido(request)) {
         return error("Origen no permitido.", 403);

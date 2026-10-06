@@ -214,9 +214,16 @@ export function usuarioPublico(fila) {
     };
 }
 
+// Las cuentas se encienden con la variable MODO_CUENTAS=si.
+export function cuentasActivas(env) {
+    return env.MODO_CUENTAS === "si";
+}
+
 // Devuelve la fila del usuario logueado, o null.
 export async function usuarioActual(context) {
     const { request, env } = context;
+
+    if (!cuentasActivas(env)) return null;
 
     await asegurarEsquema(env);
 
@@ -232,6 +239,10 @@ export async function usuarioActual(context) {
 // Atajo para los endpoints que exigen sesión. Devuelve
 // { usuario } si todo está bien, o { respuesta } con el error.
 export async function exigirUsuario(context, { mutante = false, perfil = true } = {}) {
+    if (!cuentasActivas(context.env)) {
+        return { respuesta: error("Las cuentas están desactivadas.", 404) };
+    }
+
     if (mutante && !origenValido(context.request)) {
         return { respuesta: error("Origen no permitido.", 403) };
     }

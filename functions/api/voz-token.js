@@ -1,5 +1,6 @@
 import { GoogleGenAI } from "@google/genai";
-import { json, error, exigirUsuario } from "../_lib/util.js";
+import { json, error, exigirUsuario, origenValido } from "../_lib/util.js";
+import { permitir } from "../_lib/gemini.js";
 import { promptVoz } from "../_lib/prompts.js";
 
 // Genera un token efímero (de un solo uso) para la API de voz en
@@ -10,8 +11,21 @@ import { promptVoz } from "../_lib/prompts.js";
 export async function onRequestPost(context) {
 
     try {
-        const { usuario, respuesta } = await exigirUsuario(context, { mutante: true });
-        if (respuesta) return respuesta;
+        let usuario = {};
+
+        if (context.env.MODO_CUENTAS === "si") {
+            const sesion = await exigirUsuario(context, { mutante: true });
+            if (sesion.respuesta) return sesion.respuesta;
+            usuario = sesion.usuario;
+        } else {
+            // Sin cuentas: se pide el nombre en el navegador, no hay sesión.
+            if (!origenValido(context.request)) return error("Origen no permitido.", 403);
+
+            const limite = Number(context.env.LIMITE_VOZ_INVITADO) || 8;
+            if (!permitir(context.request, "voz", limite, 10 * 60 * 1000)) {
+                return error("Iniciaste muchas conversaciones por voz seguidas. Espera unos minutos.", 429);
+            }
+        }
 
         if (!context.env.GEMINI_API_KEY) {
             return error("Falta configurar GEMINI_API_KEY en el servidor.", 500);

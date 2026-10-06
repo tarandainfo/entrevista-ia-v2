@@ -326,7 +326,7 @@
         <nav class="ajustes-nav" aria-label="Secciones de ajustes">
             <h2 id="ajustes-titulo">Ajustes</h2>
             <button class="pestana activa" data-panel="general">General</button>
-            <button class="pestana" data-panel="perfil">Perfil</button>
+            <button class="pestana solo-cuenta" data-panel="perfil">Perfil</button>
             <button class="pestana" data-panel="datos">Datos y privacidad</button>
         </nav>
 
@@ -381,15 +381,23 @@
             </div>
 
             <div class="ajustes-panel" data-panel="datos" hidden>
-                <div class="fila-ajuste">
-                    <div><strong>Exportar mis datos</strong><small>Descarga tu perfil y todas tus conversaciones</small></div>
-                    <button id="btn-exportar" class="btn-borde">Exportar</button>
+                <div class="nota-ajuste solo-invitado">
+                    <svg class="ico"><use href="#i-candado"/></svg>
+                    <span>Por ahora no hace falta crear una cuenta. Tus conversaciones se guardan solo en este navegador de este dispositivo: no se envían a ningún servidor ni se ven desde otro equipo.</span>
                 </div>
                 <div class="fila-ajuste">
+                    <div><strong>Exportar mis datos</strong><small>Descarga tus conversaciones en un archivo</small></div>
+                    <button id="btn-exportar" class="btn-borde">Exportar</button>
+                </div>
+                <div class="fila-ajuste solo-invitado">
+                    <div><strong>Borrar mi historial</strong><small>Elimina todas las conversaciones guardadas en este dispositivo</small></div>
+                    <button id="btn-borrar-historial" class="btn-peligro">Borrar</button>
+                </div>
+                <div class="fila-ajuste solo-cuenta">
                     <div><strong>Cerrar sesión</strong><small>Salir de tu cuenta en este dispositivo</small></div>
                     <button id="btn-cerrar-sesion" class="btn-borde">Cerrar sesión</button>
                 </div>
-                <div class="fila-ajuste">
+                <div class="fila-ajuste solo-cuenta">
                     <div><strong>Eliminar mi cuenta</strong><small>Borra tu cuenta y todo tu historial. No se puede deshacer.</small></div>
                     <button id="btn-borrar-cuenta" class="btn-peligro">Eliminar</button>
                 </div>

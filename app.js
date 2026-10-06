@@ -18,7 +18,9 @@
         bienvenidaNueva: false,  // recién creó su perfil: saludo de bienvenida
         filtro: "",
         archivoEnVista: null,
-        ultimoFoco: null
+        archivosListados: [],
+        ultimoFoco: null,
+        invitado: false          // sin cuentas: el historial vive en este navegador
     };
 
     // ----------------------------------------
@@ -98,6 +100,112 @@
     function iniciales(usuario) {
         const a = (usuario.nombre || usuario.email || "?").trim()[0] || "?";
         return a.toUpperCase();
+    }
+
+    // ----------------------------------------
+    // Modo sin cuentas: historial y ajustes en este navegador
+    // ----------------------------------------
+
+    const CLAVE_CONVERSACIONES = "leda-conversaciones";
+    const CLAVE_AJUSTES = "leda-ajustes";
+    const AJUSTES_POR_DEFECTO = { tema: "auto", estilo: "equilibrado", buscarWeb: true };
+    const MAX_CONVERSACIONES_LOCALES = 60;
+
+    function leerLocal(clave, porDefecto) {
+        try {
+            const texto = localStorage.getItem(clave);
+            return texto ? JSON.parse(texto) : porDefecto;
+        } catch (e) {
+            return porDefecto;
+        }
+    }
+
+    function escribirLocal(clave, valor) {
+        try {
+            localStorage.setItem(clave, JSON.stringify(valor));
+            return true;
+        } catch (e) {
+            return false;
+        }
+    }
+
+    let conversacionesLocales = null;
+
+    function listaLocal() {
+        if (!conversacionesLocales) {
+            const guardadas = leerLocal(CLAVE_CONVERSACIONES, []);
+            conversacionesLocales = Array.isArray(guardadas) ? guardadas : [];
+        }
+        return conversacionesLocales;
+    }
+
+    function persistirLista() {
+        let lista = listaLocal().sort((a, b) => b.actualizada - a.actualizada);
+        lista = lista.slice(0, MAX_CONVERSACIONES_LOCALES);
+        conversacionesLocales = lista;
+
+        let recortada = false;
+
+        // Si el navegador se queda sin espacio, se descartan las más viejas.
+        while (!escribirLocal(CLAVE_CONVERSACIONES, lista) && lista.length > 1) {
+            lista.pop();
+            recortada = true;
+        }
+
+        if (recortada) toast("El navegador se quedó sin espacio: se borraron conversaciones antiguas.", 6000);
+    }
+
+    // Guarda en el navegador la conversación que está abierta.
+    function guardarActualLocal(conversacion) {
+        const a = conversacion || estado.actual;
+        if (!estado.invitado || !a || !a.id) return;
+
+        const lista = listaLocal();
+        let registro = lista.find((c) => c.id === a.id);
+
+        if (!registro) {
+            registro = { id: a.id, titulo: a.titulo, creada: Date.now(), actualizada: Date.now(), mensajes: [] };
+            lista.push(registro);
+        }
+
+        registro.titulo = a.titulo;
+        registro.actualizada = Date.now();
+        registro.mensajes = a.mensajes.map((m) => ({
+            rol: m.rol,
+            contenido: m.contenido,
+            fuentes: m.fuentes || [],
+            origen: m.origen || "texto"
+        }));
+
+        persistirLista();
+    }
+
+    function tituloLocal(texto, respaldo) {
+        const limpio = String(texto || "").replace(/\s+/g, " ").trim().slice(0, 60);
+        return limpio || respaldo || "Conversación nueva";
+    }
+
+    function entrarInvitado() {
+        estado.invitado = true;
+        document.body.classList.add("modo-invitado");
+
+        estado.usuario = {
+            id: "invitado",
+            nombre: "",
+            apellido: "",
+            genero: "",
+            email: "",
+            foto: null,
+            perfilCompleto: true,
+            ajustes: { ...AJUSTES_POR_DEFECTO, ...leerLocal(CLAVE_AJUSTES, {}) }
+        };
+
+        aplicarTema(estado.usuario.ajustes.tema);
+        mostrar("app");
+        pintarPerfilLateral();
+        nuevaConversacion();
+        cargarConversaciones();
+        iniciarMedicionRed();
     }
 
     // ----------------------------------------
@@ -305,6 +413,15 @@
 
     function pintarPerfilLateral() {
         const u = estado.usuario;
+
+        if (estado.invitado) {
+            $("nombre-lateral").textContent = "Invitado";
+            $("correo-lateral").textContent = "En este dispositivo";
+            $("avatar").style.backgroundImage = "";
+            $("avatar").textContent = "I";
+            return;
+        }
+
         $("nombre-lateral").textContent = `${u.nombre} ${u.apellido}`.trim();
         $("correo-lateral").textContent = u.email;
 
@@ -494,6 +611,14 @@
     // ----------------------------------------
 
     async function cargarConversaciones() {
+        if (estado.invitado) {
+            estado.conversaciones = listaLocal()
+                .map(({ id, titulo, creada, actualizada }) => ({ id, titulo, creada, actualizada }))
+                .sort((a, b) => b.actualizada - a.actualizada);
+            pintarLista();
+            return;
+        }
+
         try {
             const datos = await api("GET", "/api/conversaciones");
             estado.conversaciones = datos.conversaciones;
@@ -575,7 +700,18 @@
             if (nuevo === null || !nuevo.trim()) return;
 
             try {
-                const datos = await api("PATCH", `/api/conversaciones/${id}`, { titulo: nuevo });
+                let titulo;
+
+                if (estado.invitado) {
+                    titulo = tituloLocal(nuevo, conv.titulo);
+                    const registro = listaLocal().find((c) => c.id === id);
+                    if (registro) registro.titulo = titulo;
+                    persistirLista();
+                } else {
+                    titulo = (await api("PATCH", `/api/conversaciones/${id}`, { titulo: nuevo })).titulo;
+                }
+
+                const datos = { titulo };
                 conv.titulo = datos.titulo;
                 if (estado.actual && estado.actual.id === id) {
                     estado.actual.titulo = datos.titulo;
@@ -592,7 +728,13 @@
             if (!window.confirm(`¿Eliminar la conversación "${conv.titulo}"? No se puede deshacer.`)) return;
 
             try {
-                await api("DELETE", `/api/conversaciones/${id}`);
+                if (estado.invitado) {
+                    conversacionesLocales = listaLocal().filter((c) => c.id !== id);
+                    persistirLista();
+                } else {
+                    await api("DELETE", `/api/conversaciones/${id}`);
+                }
+
                 estado.conversaciones = estado.conversaciones.filter((c) => c.id !== id);
                 if (estado.actual && estado.actual.id === id) nuevaConversacion();
                 pintarLista();
@@ -614,7 +756,10 @@
         const u = estado.usuario;
         if (!u) return;
 
-        if (estado.bienvenidaNueva) {
+        if (!u.nombre) {
+            $("saludo-titulo").textContent = saludoHora();
+            $("saludo-sub").textContent = "Soy LEDA, la asistente de InfoNegocios. ¿En qué te ayudo hoy? Investigo, te paso links y creo archivos.";
+        } else if (estado.bienvenidaNueva) {
             $("saludo-titulo").textContent = `${bienvenidaTexto(u.genero)}, ${u.nombre}`;
             $("saludo-sub").textContent = "Soy LEDA, tu asistente de InfoNegocios. ¿En qué te ayudo hoy?";
         } else {
@@ -644,7 +789,18 @@
         if (estado.abortador) estado.abortador.abort();
 
         try {
-            const datos = await api("GET", `/api/conversaciones/${id}`);
+            let datos;
+
+            if (estado.invitado) {
+                const registro = listaLocal().find((c) => c.id === id);
+                if (!registro) throw new Error("No encontré esa conversación.");
+                datos = {
+                    conversacion: { id: registro.id, titulo: registro.titulo },
+                    mensajes: registro.mensajes
+                };
+            } else {
+                datos = await api("GET", `/api/conversaciones/${id}`);
+            }
 
             estado.actual = {
                 id: datos.conversacion.id,
@@ -1072,11 +1228,17 @@
         estado.bienvenidaNueva = false;
         pintarSeguimientos(false);
 
-        if (!estado.actual) estado.actual = { id: null, titulo: "", mensajes: [] };
+        if (!estado.actual) {
+            estado.actual = { id: estado.invitado ? crypto.randomUUID() : null, titulo: "", mensajes: [] };
+        }
 
         definirModoVacio(false);
 
         const caja = $("mensajes");
+
+        // Sin cuentas, el servidor no guarda nada: le mandamos el historial.
+        const paraServidor = () => estado.actual.mensajes.map((m) => ({ rol: m.rol, contenido: m.contenido }));
+        let historial = [];
 
         if (regenerar) {
             // Quitamos la última respuesta de LEDA, que se va a volver a pedir.
@@ -1086,11 +1248,18 @@
                 const nodos = caja.querySelectorAll(".msg-ia");
                 if (nodos.length) nodos[nodos.length - 1].remove();
             }
+            historial = paraServidor();
         } else {
+            historial = paraServidor();
             const nombres = adjuntos.map((a) => a.nombre);
             const contenido = nombres.length
                 ? `${texto}${texto ? "\n\n" : ""}[Adjuntos: ${nombres.join(", ")}]`
                 : texto;
+
+            if (estado.invitado && !estado.actual.titulo) {
+                estado.actual.titulo = tituloLocal(texto, nombres[0]);
+                $("titulo-conv").textContent = estado.actual.titulo;
+            }
 
             const mensajeUsuario = { rol: "user", contenido, fuentes: [], origen: "texto" };
             estado.actual.mensajes.push(mensajeUsuario);
@@ -1120,12 +1289,23 @@
             const respuesta = await fetch("/api/chat", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    conversacionId: conversacion.id,
-                    mensaje: texto,
-                    adjuntos,
-                    regenerar
-                }),
+                body: JSON.stringify(estado.invitado
+                    ? {
+                        historial,
+                        mensaje: texto,
+                        adjuntos,
+                        regenerar,
+                        ajustes: {
+                            estilo: estado.usuario.ajustes.estilo,
+                            buscarWeb: estado.usuario.ajustes.buscarWeb
+                        }
+                    }
+                    : {
+                        conversacionId: conversacion.id,
+                        mensaje: texto,
+                        adjuntos,
+                        regenerar
+                    }),
                 signal: controlador.signal
             });
 
@@ -1177,6 +1357,14 @@
             estado.abortador = null;
         }
 
+        // Una respuesta vacía no se guarda.
+        if (!mensajeIA.contenido.trim()) {
+            const posicion = conversacion.mensajes.indexOf(mensajeIA);
+            if (posicion !== -1) conversacion.mensajes.splice(posicion, 1);
+        }
+
+        guardarActualLocal(conversacion);
+
         // Si cambió de conversación mientras respondía, no tocamos la pantalla.
         if (estado.actual !== conversacion) {
             cargarConversaciones();
@@ -1184,8 +1372,6 @@
         }
 
         if (!mensajeIA.contenido.trim()) {
-            // Respuesta vacía: se quita y se muestra el motivo.
-            conversacion.mensajes.pop();
             nodoIA.remove();
         } else {
             renderPendiente = false;
@@ -1268,7 +1454,9 @@
         // el navegador permita el audio.
         window.LedaVoz.iniciar({
             pedirToken: () => api("POST", "/api/voz-token"),
-            disparador: `Salúdame brevemente diciendo "${saludoHora()}, ${nombre}" y pregúntame en qué puedes ayudarme.`,
+            disparador: nombre
+                ? `Salúdame brevemente diciendo "${saludoHora()}, ${nombre}" y pregúntame en qué puedes ayudarme.`
+                : `Salúdame brevemente diciendo "${saludoHora()}" y pregúntame en qué puedes ayudarme.`,
             onEstado: ponerEstadoVoz,
             onUsuario: (t) => ponerSubtitulo("Tú", t),
             onModelo: (t) => ponerSubtitulo("LEDA", t),
@@ -1309,6 +1497,22 @@
 
         // Se guardan de a uno, en orden, para no crear conversaciones duplicadas.
         colaGuardadoVoz = colaGuardadoVoz.then(async () => {
+
+            if (estado.invitado) {
+                if (!estado.actual) {
+                    estado.actual = { id: crypto.randomUUID(), titulo: "", mensajes: [] };
+                }
+                if (!estado.actual.id) estado.actual.id = crypto.randomUUID();
+                if (!estado.actual.titulo) estado.actual.titulo = tituloLocal(usuario, "Conversación por voz");
+
+                for (const m of mensajes) {
+                    estado.actual.mensajes.push({ ...m, fuentes: [], origen: "voz" });
+                }
+
+                guardarActualLocal();
+                return;
+            }
+
             try {
                 const datos = await api("POST", "/api/mensajes", {
                     conversacionId: estado.actual ? estado.actual.id : null,
@@ -1371,6 +1575,8 @@
             b.setAttribute("aria-checked", String(Boolean(a[b.dataset.interruptor])));
         });
 
+        if (estado.invitado) return;
+
         $("aj-nombre").value = estado.usuario.nombre;
         $("aj-apellido").value = estado.usuario.apellido;
 
@@ -1390,6 +1596,13 @@
     }
 
     async function cambiarAjuste(cambio) {
+        if (estado.invitado) {
+            estado.usuario.ajustes = { ...estado.usuario.ajustes, ...cambio };
+            escribirLocal(CLAVE_AJUSTES, estado.usuario.ajustes);
+            pintarAjustes();
+            return;
+        }
+
         try {
             const datos = await api("PATCH", "/api/ajustes", cambio);
             estado.usuario = datos.usuario;
@@ -1430,10 +1643,23 @@
 
     async function exportarDatos() {
         try {
-            const respuesta = await fetch("/api/exportar");
-            if (!respuesta.ok) throw new Error("No se pudieron exportar los datos.");
+            let blob;
 
-            const blob = await respuesta.blob();
+            if (estado.invitado) {
+                blob = new Blob(
+                    [JSON.stringify({
+                        exportado: new Date().toISOString(),
+                        ajustes: estado.usuario.ajustes,
+                        conversaciones: listaLocal()
+                    }, null, 2)],
+                    { type: "application/json" }
+                );
+            } else {
+                const respuesta = await fetch("/api/exportar");
+                if (!respuesta.ok) throw new Error("No se pudieron exportar los datos.");
+                blob = await respuesta.blob();
+            }
+
             const enlace = document.createElement("a");
             enlace.href = URL.createObjectURL(blob);
             enlace.download = "mis-datos-leda.json";
@@ -1444,6 +1670,17 @@
         } catch (e) {
             toast(e.message);
         }
+    }
+
+    function borrarHistorialLocal() {
+        if (!window.confirm("¿Borrar todas tus conversaciones de este dispositivo? No se puede deshacer.")) return;
+
+        conversacionesLocales = [];
+        persistirLista();
+        nuevaConversacion();
+        cargarConversaciones();
+        cerrarModal("ajustes");
+        toast("Historial borrado.", 2500);
     }
 
     async function cerrarSesion() {
@@ -1476,7 +1713,25 @@
         lista.innerHTML = '<p class="vacio-aviso">Cargando...</p>';
 
         try {
-            const datos = await api("GET", "/api/archivos");
+            let datos;
+
+            if (estado.invitado) {
+                const archivos = [];
+                const recientes = listaLocal().slice().sort((a, b) => b.actualizada - a.actualizada);
+
+                for (const conv of recientes) {
+                    for (const m of conv.mensajes) {
+                        if (m.rol !== "model") continue;
+                        for (const spec of window.LedaArchivos.separarArchivos(m.contenido).archivos) {
+                            archivos.push({ conversacionId: conv.id, conversacionTitulo: conv.titulo, spec });
+                        }
+                    }
+                }
+
+                datos = { archivos: archivos.slice(0, 60) };
+            } else {
+                datos = await api("GET", "/api/archivos");
+            }
 
             if (!datos.archivos.length) {
                 lista.innerHTML = '<p class="vacio-aviso">Todavía no creé ningún archivo para ti.<br>Pídele a LEDA un documento, una planilla o un PDF.</p>';
@@ -1694,6 +1949,7 @@
         $("form-ajustes-perfil").addEventListener("submit", guardarPerfilDesdeAjustes);
         $("btn-exportar").addEventListener("click", exportarDatos);
         $("btn-cerrar-sesion").addEventListener("click", cerrarSesion);
+        $("btn-borrar-historial").addEventListener("click", borrarHistorialLocal);
         $("btn-borrar-cuenta").addEventListener("click", borrarCuenta);
 
         $("preview-descargar").addEventListener("click", (e) => {
@@ -1718,6 +1974,13 @@
 
         try {
             estado.config = await api("GET", "/api/config");
+
+            // Sin cuentas (por ahora): se entra directo al chat.
+            if (!estado.config.cuentas) {
+                entrarInvitado();
+                return;
+            }
+
             const datos = await api("GET", "/api/me");
 
             if (datos.usuario) {
