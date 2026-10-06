@@ -79,14 +79,23 @@ export function modelosCandidatos(env) {
 async function motivoDelError(respuesta) {
     const texto = await respuesta.text().catch(() => "");
 
+    // Google repite en cada error unos enlaces genéricos que tapan lo
+    // importante (qué cuota falta y cuál es el límite): se sacan.
+    const limpiar = (t) => String(t)
+        .replace(/For more information on this error, head to:\s*\S+/gi, "")
+        .replace(/To monitor your current usage, head to:\s*\S+/gi, "")
+        .replace(/\s+/g, " ")
+        .trim()
+        .slice(0, 500);
+
     try {
         const datos = JSON.parse(texto);
         if (datos && datos.error && datos.error.message) {
-            return String(datos.error.message).replace(/\s+/g, " ").slice(0, 200);
+            return limpiar(datos.error.message);
         }
     } catch (e) { /* no era JSON */ }
 
-    return texto.replace(/\s+/g, " ").slice(0, 200) || "sin detalle";
+    return limpiar(texto) || "sin detalle";
 }
 
 function pedirAGemini(env, modelo, cuerpo, transmitiendo) {
@@ -189,6 +198,22 @@ export async function probarConexion(env) {
     return resultados;
 }
 
+// Frase clara en español según el tipo de falla de Google.
+function titularDeFalla(status) {
+    if (status === 429) {
+        return "Se agotó la cuota de uso de Gemini (la clave del servidor no tiene cupo disponible). " +
+            "Si eres quien administra LEDA: revisa el plan y la facturación de esa clave en Google AI Studio.";
+    }
+    if (status === 401 || status === 403) {
+        return "Google rechazó la clave de Gemini del servidor (sin permiso o inválida). " +
+            "Si eres quien administra LEDA: revisa GEMINI_API_KEY.";
+    }
+    if (status === 404) {
+        return "El modelo configurado no existe o no está disponible para esta clave.";
+    }
+    return "No pude comunicarme con el modelo en este momento. Intenta de nuevo.";
+}
+
 // Pide la respuesta a Gemini y la va "transmitiendo" con enviar().
 // Devuelve el texto completo, las fuentes y, si falló, el motivo.
 export async function transmitir({ env, contents, instruccion, buscarWeb, enviar }) {
@@ -215,7 +240,7 @@ export async function transmitir({ env, contents, instruccion, buscarWeb, enviar
             fuentes: [],
             clienteSeFue: false,
             error:
-                "No pude comunicarme con el modelo en este momento. Intenta de nuevo. " +
+                `${titularDeFalla(f.status)} ` +
                 `(Detalle técnico: ${f.status || "sin conexión"} con ${f.modelo}: ${f.motivo}` +
                 (otros ? `. También se probó: ${otros}` : "") + ")"
         };
