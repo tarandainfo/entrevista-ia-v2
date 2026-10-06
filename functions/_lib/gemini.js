@@ -61,42 +61,131 @@ function datosDelBloque(bloque) {
 // Llamada a Gemini
 // ----------------------------------------
 
-async function llamarGemini({ env, contents, systemInstruction, buscarWeb }) {
-    const base = env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com";
-    const modelo = env.GEMINI_CHAT_MODEL || "gemini-3.5-flash-lite";
-    const url = `${base}/v1beta/models/${modelo}:streamGenerateContent?alt=sse`;
+// Modelos a probar, en orden. El primero es el configurado (o el
+// habitual); los demás son alternativas por si ese nombre no existe
+// o la cuenta no tiene acceso.
+export function modelosCandidatos(env) {
+    const lista = [
+        env.GEMINI_CHAT_MODEL,
+        "gemini-3.5-flash-lite",
+        "gemini-flash-lite-latest",
+        "gemini-flash-latest"
+    ].filter(Boolean);
 
-    const cuerpo = {
+    return Array.from(new Set(lista));
+}
+
+// Saca el motivo legible de una respuesta de error de Google.
+async function motivoDelError(respuesta) {
+    const texto = await respuesta.text().catch(() => "");
+
+    try {
+        const datos = JSON.parse(texto);
+        if (datos && datos.error && datos.error.message) {
+            return String(datos.error.message).replace(/\s+/g, " ").slice(0, 200);
+        }
+    } catch (e) { /* no era JSON */ }
+
+    return texto.replace(/\s+/g, " ").slice(0, 200) || "sin detalle";
+}
+
+function pedirAGemini(env, modelo, cuerpo, transmitiendo) {
+    const base = env.GEMINI_API_BASE || "https://generativelanguage.googleapis.com";
+    const metodo = transmitiendo ? "streamGenerateContent?alt=sse" : "generateContent";
+
+    return fetch(`${base}/v1beta/models/${modelo}:${metodo}`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": env.GEMINI_API_KEY
+        },
+        body: JSON.stringify(cuerpo)
+    });
+}
+
+// Prueba un modelo, con búsqueda web y, si la rechaza, sin ella.
+async function probarModelo(env, modelo, cuerpoBase, buscarWeb, transmitiendo) {
+    const cuerpo = { ...cuerpoBase };
+    if (buscarWeb) cuerpo.tools = [{ google_search: {} }];
+
+    let respuesta = await pedirAGemini(env, modelo, cuerpo, transmitiendo);
+
+    // Si el modelo no acepta la búsqueda web, reintentamos sin ella
+    // en lugar de dejar a la persona sin respuesta.
+    if (!respuesta.ok && buscarWeb && [400, 403, 422, 501].includes(respuesta.status)) {
+        console.warn(`El modelo ${modelo} rechazó la búsqueda (${respuesta.status}); se reintenta sin ella.`);
+        delete cuerpo.tools;
+        respuesta = await pedirAGemini(env, modelo, cuerpo, transmitiendo);
+    }
+
+    return respuesta;
+}
+
+async function llamarGemini({ env, contents, systemInstruction, buscarWeb }) {
+    const cuerpoBase = {
         systemInstruction: { parts: [{ text: systemInstruction }] },
         contents,
         generationConfig: { maxOutputTokens: 8192 }
     };
 
-    if (buscarWeb) {
-        cuerpo.tools = [{ google_search: {} }];
+    let primeraFalla = null;
+
+    for (const modelo of modelosCandidatos(env)) {
+        const respuesta = await probarModelo(env, modelo, cuerpoBase, buscarWeb, true);
+
+        if (respuesta.ok && respuesta.body) {
+            return { respuesta, modelo };
+        }
+
+        const falla = {
+            modelo,
+            status: respuesta.status,
+            motivo: await motivoDelError(respuesta)
+        };
+
+        console.error(`Gemini rechazó el modelo ${modelo}: ${falla.status} ${falla.motivo}`);
+
+        if (!primeraFalla) primeraFalla = falla;
+
+        // Clave inválida o sin cuota: probar otros modelos no ayuda.
+        if (falla.status === 401 || falla.status === 429) break;
     }
 
-    const pedir = () =>
-        fetch(url, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "x-goog-api-key": env.GEMINI_API_KEY
-            },
-            body: JSON.stringify(cuerpo)
+    return { respuesta: null, falla: primeraFalla };
+}
+
+// Prueba corta (sin transmitir) para la página de diagnóstico.
+export async function probarConexion(env) {
+    const resultados = [];
+
+    for (const modelo of modelosCandidatos(env)) {
+        const cuerpo = {
+            contents: [{ role: "user", parts: [{ text: "Responde solo con la palabra: ok" }] }],
+            generationConfig: { maxOutputTokens: 20 }
+        };
+
+        const intento = async (conBusqueda) => {
+            const c = { ...cuerpo };
+            if (conBusqueda) c.tools = [{ google_search: {} }];
+
+            try {
+                const r = await pedirAGemini(env, modelo, c, false);
+                return r.ok
+                    ? { ok: true, estado: r.status }
+                    : { ok: false, estado: r.status, motivo: await motivoDelError(r) };
+            } catch (e) {
+                return { ok: false, estado: 0, motivo: "No se pudo conectar: " + e.message };
+            }
+        };
+
+        resultados.push({
+            modelo,
+            sinBusqueda: await intento(false),
+            conBusqueda: await intento(true)
         });
-
-    let respuesta = await pedir();
-
-    // Si el modelo no acepta la búsqueda web, reintentamos sin ella
-    // en lugar de dejar a la persona sin respuesta.
-    if (!respuesta.ok && buscarWeb && respuesta.status === 400) {
-        console.warn("El modelo rechazó la herramienta de búsqueda; se reintenta sin ella.");
-        delete cuerpo.tools;
-        respuesta = await pedir();
     }
 
-    return respuesta;
+    return resultados;
 }
 
 // Pide la respuesta a Gemini y la va "transmitiendo" con enviar().
@@ -107,23 +196,26 @@ export async function transmitir({ env, contents, instruccion, buscarWeb, enviar
     let clienteSeFue = false;
     let motivoVacio = "";
 
-    const upstream = await llamarGemini({
+    const llamada = await llamarGemini({
         env,
         contents,
         systemInstruction: instruccion,
         buscarWeb
     });
 
-    if (!upstream.ok || !upstream.body) {
-        const detalle = await upstream.text().catch(() => "");
-        console.error("Gemini respondió con error:", upstream.status, detalle.slice(0, 500));
+    if (!llamada.respuesta) {
+        const f = llamada.falla || { status: 0, motivo: "sin detalle", modelo: "?" };
         return {
             texto: "",
             fuentes: [],
             clienteSeFue: false,
-            error: "No pude comunicarme con el modelo en este momento. Intenta de nuevo."
+            error:
+                "No pude comunicarme con el modelo en este momento. Intenta de nuevo. " +
+                `(Detalle técnico: ${f.status || "sin conexión"} con ${f.modelo}: ${f.motivo})`
         };
     }
+
+    const upstream = llamada.respuesta;
 
     for await (const bloque of leerEventos(upstream.body)) {
         const datos = datosDelBloque(bloque);
