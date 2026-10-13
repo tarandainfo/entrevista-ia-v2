@@ -5,9 +5,9 @@ import {
     validarAdjuntos,
     sumarAdjuntos,
     abrirStream,
-    transmitir,
     permitir
 } from "./gemini.js";
+import { transmitir, hayModelosConfigurados } from "./modelo.js";
 
 const MAX_CARACTERES_MENSAJE = 8000;
 const MAX_MENSAJES_HISTORIAL = 40;
@@ -27,8 +27,8 @@ export async function manejarChatInvitado(context) {
             return error("Origen no permitido.", 403);
         }
 
-        if (!env.GEMINI_API_KEY) {
-            return error("Falta configurar GEMINI_API_KEY en el servidor.", 500);
+        if (!hayModelosConfigurados(env)) {
+            return error("No hay ningún modelo configurado: falta GEMINI_API_KEY en el servidor (o un proveedor alternativo).", 500);
         }
 
         const limite = Number(env.LIMITE_INVITADO) || LIMITE_POR_DEFECTO;
@@ -102,7 +102,16 @@ export async function manejarChatInvitado(context) {
             buscarWeb: !(cuerpo.ajustes && cuerpo.ajustes.buscarWeb === false)
         };
 
-        const instruccion = promptChat({ usuario: {}, ajustes, ahora: new Date() });
+        // Los proveedores que no son Gemini no tienen búsqueda web.
+        const instruccionPara = (proveedor) => promptChat({
+            usuario: {},
+            ajustes: {
+                ...ajustes,
+                buscarWeb: proveedor === "gemini" ? ajustes.buscarWeb : false,
+                busquedaNoDisponible: proveedor !== "gemini" && ajustes.buscarWeb
+            },
+            ahora: new Date()
+        });
 
         const flujo = abrirStream();
 
@@ -111,7 +120,7 @@ export async function manejarChatInvitado(context) {
                 const resultado = await transmitir({
                     env,
                     contents,
-                    instruccion,
+                    instruccionPara,
                     buscarWeb: ajustes.buscarWeb,
                     enviar: flujo.enviar
                 });

@@ -83,7 +83,9 @@ export function promptChat({ usuario, ajustes, ahora }) {
         detallado: "ESTILO: respuestas detalladas y bien explicadas, con ejemplos cuando ayuden."
     };
 
-    const busqueda = ajustes.buscarWeb
+    const busqueda = ajustes.busquedaNoDisponible
+        ? "BÚSQUEDA: en este momento NO tienes búsqueda web disponible: no puedes consultar internet ni dar links verificados. Si te piden datos actuales o links, dilo con claridad, responde con lo que sabes aclarando que podría estar desactualizado, y nunca inventes links ni fuentes."
+        : ajustes.buscarWeb
         ? "BÚSQUEDA: tienes acceso a búsqueda web. Úsala cuando la pregunta dependa de información reciente o verificable, y apóyate en las fuentes que encuentres. Indica de dónde sale la información importante."
         : "BÚSQUEDA: en esta conversación NO tienes búsqueda web activada. Si necesitas datos actuales, dilo y sugiere activar la búsqueda en Ajustes.";
 

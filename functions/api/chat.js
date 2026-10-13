@@ -4,9 +4,9 @@ import {
     armarContenidos,
     validarAdjuntos,
     sumarAdjuntos,
-    abrirStream,
-    transmitir
+    abrirStream
 } from "../_lib/gemini.js";
+import { transmitir, hayModelosConfigurados } from "../_lib/modelo.js";
 import { manejarChatInvitado } from "../_lib/chat-invitado.js";
 import {
     buscarConversacion,
@@ -32,8 +32,8 @@ export async function onRequestPost(context) {
         const { usuario, respuesta } = await exigirUsuario(context, { mutante: true });
         if (respuesta) return respuesta;
 
-        if (!env.GEMINI_API_KEY) {
-            return error("Falta configurar GEMINI_API_KEY en el servidor.", 500);
+        if (!hayModelosConfigurados(env)) {
+            return error("No hay ningún modelo configurado: falta GEMINI_API_KEY en el servidor (o un proveedor alternativo).", 500);
         }
 
         let cuerpo;
@@ -144,7 +144,16 @@ export async function onRequestPost(context) {
         }
 
         const ajustes = leerAjustes(usuario.ajustes);
-        const instruccion = promptChat({ usuario, ajustes, ahora: new Date() });
+        // Los proveedores que no son Gemini no tienen búsqueda web.
+        const instruccionPara = (proveedor) => promptChat({
+            usuario,
+            ajustes: {
+                ...ajustes,
+                buscarWeb: proveedor === "gemini" ? ajustes.buscarWeb : false,
+                busquedaNoDisponible: proveedor !== "gemini" && ajustes.buscarWeb
+            },
+            ahora: new Date()
+        });
 
         // ---- Respuesta en streaming ----
 
@@ -161,7 +170,7 @@ export async function onRequestPost(context) {
                 const resultado = await transmitir({
                     env,
                     contents,
-                    instruccion,
+                    instruccionPara,
                     buscarWeb: ajustes.buscarWeb,
                     enviar: flujo.enviar
                 });

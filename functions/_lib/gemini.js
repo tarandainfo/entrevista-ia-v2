@@ -15,7 +15,7 @@ const MIMES_BINARIOS = [
 // Lectura del stream de eventos (SSE) de Gemini
 // ----------------------------------------
 
-async function* leerEventos(cuerpo) {
+export async function* leerEventos(cuerpo) {
     const lector = cuerpo.getReader();
     const decodificador = new TextDecoder();
     let pendiente = "";
@@ -42,7 +42,7 @@ async function* leerEventos(cuerpo) {
     }
 }
 
-function datosDelBloque(bloque) {
+export function datosDelBloque(bloque) {
     const lineas = bloque
         .split(/\r?\n/)
         .filter((l) => l.startsWith("data:"))
@@ -216,7 +216,7 @@ function titularDeFalla(status) {
 
 // Pide la respuesta a Gemini y la va "transmitiendo" con enviar().
 // Devuelve el texto completo, las fuentes y, si falló, el motivo.
-export async function transmitir({ env, contents, instruccion, buscarWeb, enviar }) {
+export async function transmitirGemini({ env, contents, instruccion, buscarWeb, enviar }) {
     let texto = "";
     const fuentes = new Map();
     let clienteSeFue = false;
@@ -239,6 +239,8 @@ export async function transmitir({ env, contents, instruccion, buscarWeb, enviar
             texto: "",
             fuentes: [],
             clienteSeFue: false,
+            conexionFallida: true,
+            resumen: `Gemini (${f.status || "sin conexión"})`,
             error:
                 `${titularDeFalla(f.status)} ` +
                 `(Detalle técnico: ${f.status || "sin conexión"} con ${f.modelo}: ${f.motivo}` +
