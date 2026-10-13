@@ -6,7 +6,7 @@
 // Si el principal (Gemini) se quedó sin cupo, pasa al siguiente.
 
 import { transmitirGemini } from "./gemini.js";
-import { listaProveedores, transmitirOpenAI, transmitirWorkers } from "./proveedores.js";
+import { listaProveedores, transmitirOpenAI, transmitirClaude, transmitirWorkers } from "./proveedores.js";
 
 export function hayModelosConfigurados(env) {
     return listaProveedores(env).length > 0;
@@ -26,6 +26,8 @@ export async function transmitir({ env, contents, instruccionPara, buscarWeb, en
             resultado = await transmitirGemini({ env, contents, instruccion, buscarWeb, enviar });
         } else if (proveedor === "openai") {
             resultado = await transmitirOpenAI({ env, contents, instruccion, enviar });
+        } else if (proveedor === "claude") {
+            resultado = await transmitirClaude({ env, contents, instruccion, enviar });
         } else {
             resultado = await transmitirWorkers({ env, contents, instruccion, enviar });
         }

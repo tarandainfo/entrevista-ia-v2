@@ -26,7 +26,7 @@ export async function onRequestGet(context) {
     const avisos = [];
 
     if (proveedores.length === 0) {
-        respuesta.aviso = "No hay ningún modelo configurado. Falta GEMINI_API_KEY en Cloudflare Pages (Settings → Environment variables) o un proveedor alternativo (PROVEEDOR_URL, PROVEEDOR_KEY y PROVEEDOR_MODELO, o el servicio Workers AI con el nombre AI). Después hay que volver a desplegar.";
+        respuesta.aviso = "No hay ningún modelo configurado. Falta GEMINI_API_KEY en Cloudflare Pages (Settings → Environment variables) o un proveedor alternativo: ANTHROPIC_API_KEY (Claude), PROVEEDOR_URL + PROVEEDOR_KEY + PROVEEDOR_MODELO (compatible con OpenAI) o el servicio Workers AI con el nombre AI. Después hay que volver a desplegar.";
         return json(respuesta, 200);
     }
 
